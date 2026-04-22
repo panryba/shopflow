@@ -30,13 +30,13 @@ public class PaymentEventConsumer {
         if (success) {
             Log.info("PAYMENT SUCCESS");
             successEmitter.send(
-                Message.of(PaymentCompletedEvent.of(event.orderId()))
+                Message.of(PaymentCompletedEvent.of(event.orderId(), event.correlationId()))
                     .addMetadata(key(event.orderId()))
             );
         } else {
             Log.info("PAYMENT FAILED");
             failedEmitter.send(
-                Message.of(PaymentFailedEvent.of(event.orderId(), "Insufficient funds"))
+                Message.of(PaymentFailedEvent.of(event.orderId(), "Insufficient funds", event.correlationId()))
                     .addMetadata(key(event.orderId()))
             );
         }
@@ -51,9 +51,9 @@ public class PaymentEventConsumer {
         return event.amount().doubleValue() < 1000;
     }
 
-    private OutgoingKafkaRecordMetadata<UUID> key(UUID orderId) {
-        return OutgoingKafkaRecordMetadata.<UUID>builder()
-                .withKey(orderId)
+    private OutgoingKafkaRecordMetadata<String> key(UUID orderId) {
+        return OutgoingKafkaRecordMetadata.<String>builder()
+                .withKey(orderId.toString())
                 .build();
     }
 }

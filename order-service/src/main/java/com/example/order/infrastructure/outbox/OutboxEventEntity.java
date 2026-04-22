@@ -29,7 +29,7 @@ public class OutboxEventEntity {
     @Column(name = "EVENT_TYPE")
     private OutboxEventType eventType;
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String payload;
 
     @Column(name = "CREATED_AT", nullable = false, updatable = false)
@@ -43,8 +43,7 @@ public class OutboxEventEntity {
     @Column(name = "RETRY_COUNT")
     private int retryCount;
 
-    @Lob
-    @Column(name = "LAST_ERROR")
+    @Column(name = "LAST_ERROR", columnDefinition = "TEXT")
     private String lastError;
 
     @PrePersist

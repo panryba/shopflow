@@ -3,6 +3,7 @@ package com.example.order.application.saga;
 import com.example.order.application.port.input.OrderUseCase;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
+import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.outbox.OutboxEventType;
 import com.example.order.infrastructure.outbox.OutboxService;
 import com.example.order.infrastructure.persistence.idempotency.ProcessedEventRepository;
@@ -25,6 +26,9 @@ public class OrderSagaOrchestrator {
     OrderUseCase service;
 
     @Inject
+    CorrelationIdProvider correlationIdProvider;
+
+    @Inject
     ProcessedEventRepository processedRepository;
 
     @Transactional
@@ -36,7 +40,12 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 order.getId().value().toString(),
                 OutboxEventType.PAYMENT_REQUEST,
-                PaymentRequestEvent.of(order.getId().value(), request.customerId(), request.amount())
+                PaymentRequestEvent.of(
+                        order.getId().value(),
+                        request.customerId(),
+                        request.amount(),
+                        getCorrelationId()
+                )
         );
         return order.getId().value();
     }
@@ -49,7 +58,10 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
                 OutboxEventType.RESTAURANT_REQUEST,
-                RestaurantRequestEvent.of(event.orderId())
+                RestaurantRequestEvent.of(
+                        event.orderId(),
+                        event.correlationId()
+                )
         );
     }
 
@@ -73,8 +85,16 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
                 OutboxEventType.PAYMENT_ROLLBACK,
-                PaymentRollbackEvent.of(event.orderId())
+                PaymentRollbackEvent.of(
+                        event.orderId(),
+                        event.correlationId()
+                )
         );
+    }
+
+    private String getCorrelationId() {
+        String id = correlationIdProvider.get();
+        return id != null ? id : UUID.randomUUID().toString();
     }
 
     private boolean tryProcess(String eventId) {

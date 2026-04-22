@@ -6,12 +6,18 @@ import com.example.shared.events.PaymentRollbackEvent;
 import com.example.shared.events.RestaurantRequestEvent;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Message;
 
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
 @ApplicationScoped
 public class KafkaOrderEventPublisher implements OrderEventPublisher {
+
+    public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
     @Channel("payment-request")
     Emitter<PaymentRequestEvent> paymentEmitter;
@@ -24,22 +30,24 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
 
     @Override
     public void publishPaymentRequest(PaymentRequestEvent event) {
-        sendWithKey(paymentEmitter, event.orderId().toString(), event);
+        sendWithCorrelation(paymentEmitter, event.orderId(), event.correlationId(), event);
     }
 
     @Override
     public void publishRestaurantRequest(RestaurantRequestEvent event) {
-        sendWithKey(restaurantEmitter, event.orderId().toString(), event);
+        sendWithCorrelation(restaurantEmitter, event.orderId(), event.correlationId(), event);
     }
 
     @Override
     public void publishPaymentRollback(PaymentRollbackEvent event) {
-        sendWithKey(rollbackEmitter, event.orderId().toString(), event);
+        sendWithCorrelation(rollbackEmitter, event.orderId(), event.correlationId(), event);
     }
 
-    private <T> void sendWithKey(Emitter<T> emitter, String key, T payload) {
-        var metadata = OutgoingKafkaRecordMetadata.builder()
-                .withKey(key)
+    private <T> void sendWithCorrelation(Emitter<T> emitter, UUID key, String correlationId, T payload) {
+        var metadata = OutgoingKafkaRecordMetadata.<String>builder()
+                .withKey(key.toString())
+                .withHeaders(new RecordHeaders()
+                        .add(CORRELATION_ID_HEADER, correlationId.getBytes(StandardCharsets.UTF_8)))
                 .build();
         emitter.send(Message.of(payload).addMetadata(metadata));
     }

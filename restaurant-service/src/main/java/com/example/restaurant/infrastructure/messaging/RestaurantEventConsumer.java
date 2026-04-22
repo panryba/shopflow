@@ -29,21 +29,21 @@ public class RestaurantEventConsumer {
         if (accepted) {
             Log.info("RESTAURANT ACCEPTED");
             approvedEmitter.send(
-                Message.of(RestaurantApprovedEvent.of(event.orderId()))
+                Message.of(RestaurantApprovedEvent.of(event.orderId(), event.correlationId()))
                     .addMetadata(key(event.orderId()))
             );
         } else {
             Log.info("RESTAURANT REJECTED");
             rejectedEmitter.send(
-                Message.of(RestaurantRejectedEvent.of(event.orderId(), "No capacity"))
+                Message.of(RestaurantRejectedEvent.of(event.orderId(), "No capacity", event.correlationId()))
                     .addMetadata(key(event.orderId()))
             );
         }
     }
 
-    private OutgoingKafkaRecordMetadata<UUID> key(UUID orderId) {
-        return OutgoingKafkaRecordMetadata.<UUID>builder()
-                .withKey(orderId)
+    private OutgoingKafkaRecordMetadata<String> key(UUID orderId) {
+        return OutgoingKafkaRecordMetadata.<String>builder()
+                .withKey(orderId.toString())
                 .build();
     }
 }

@@ -34,11 +34,11 @@ public class OutboxPublisherJob {
     int retentionDays;
 
     @Scheduled(every = "5s")
+    @Transactional
     public void publish() {
         repository.findUnprocessed(batchSize, maxRetries).forEach(this::processPublish);
     }
 
-    @Transactional
     void processPublish(OutboxEventEntity event) {
         try {
             route(event);
@@ -68,7 +68,6 @@ public class OutboxPublisherJob {
     }
 
     @Scheduled(every = "1m")
-    @Transactional
     public void logDeadEvents() {
         var dead = repository.findDead(maxRetries);
         dead.forEach(e -> Log.errorf("DEAD OUTBOX EVENT id=%s error=%s", e.getId(), e.getLastError()));

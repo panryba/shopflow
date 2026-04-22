@@ -5,14 +5,16 @@ import java.util.UUID;
 public record PaymentFailedEvent(
         String eventId,
         UUID orderId,
-        String reason
+        String reason,
+        String correlationId
 ) {
 
-    public static PaymentFailedEvent of(UUID orderId, String reason) {
+    public static PaymentFailedEvent of(UUID orderId, String reason, String correlationId) {
         return new PaymentFailedEvent(
                 UUID.randomUUID().toString(),
                 orderId,
-                reason
+                reason,
+                correlationId
         );
     }
 }

@@ -4,13 +4,15 @@ import java.util.UUID;
 
 public record PaymentRollbackEvent(
         String eventId,
-        UUID orderId
+        UUID orderId,
+        String correlationId
 ) {
 
-    public static PaymentRollbackEvent of(UUID orderId) {
+    public static PaymentRollbackEvent of(UUID orderId, String correlationId) {
         return new PaymentRollbackEvent(
                 UUID.randomUUID().toString(),
-                orderId
+                orderId,
+                correlationId
         );
     }
 }

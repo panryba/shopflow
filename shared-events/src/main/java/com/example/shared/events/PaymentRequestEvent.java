@@ -7,15 +7,17 @@ public record PaymentRequestEvent(
         String eventId,
         UUID orderId,
         UUID customerId,
-        BigDecimal amount
+        BigDecimal amount,
+        String correlationId
 ) {
 
-    public static PaymentRequestEvent of(UUID orderId, UUID customerId, BigDecimal amount) {
+    public static PaymentRequestEvent of(UUID orderId, UUID customerId, BigDecimal amount, String correlationId) {
         return new PaymentRequestEvent(
                 UUID.randomUUID().toString(),
                 orderId,
                 customerId,
-                amount
+                amount,
+                correlationId
         );
     }
 }

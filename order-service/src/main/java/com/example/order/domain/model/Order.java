@@ -39,16 +39,19 @@ public class Order {
     }
 
     public void pay() {
+        if (status == OrderStatus.CANCELLED) return;
         if (status != OrderStatus.CREATED) throw new IllegalStateException("Invalid state transition");
         this.status = OrderStatus.PAID;
     }
 
     public void approve() {
+        if (status == OrderStatus.CANCELLED) return;
         if (status != OrderStatus.PAID) throw new IllegalStateException("Cannot approve");
         this.status = OrderStatus.APPROVED;
     }
 
     public void cancel() {
+        if (status == OrderStatus.CANCELLED) return;
         this.status = OrderStatus.CANCELLED;
     }
 }

@@ -27,7 +27,8 @@ public class RestaurantEventConsumer {
     @Incoming("restaurant-request")
     public CompletionStage<Void> process(Message<com.example.order.events.avro.RestaurantRequestEvent> message) {
         try {
-            boolean accepted = false; // simulate failure
+            boolean accepted = true;
+            //accepted = false; // simulate failure
 
             var avro = message.getPayload();
             String orderId = avro.getOrderId().toString();

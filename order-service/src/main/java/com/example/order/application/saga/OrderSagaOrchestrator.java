@@ -14,46 +14,57 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolationException;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @ApplicationScoped
 public class OrderSagaOrchestrator {
 
-    @Inject
-    OutboxService outbox;
-
-    @Inject
-    OrderUseCase service;
-
-    @Inject
-    CorrelationIdProvider correlationIdProvider;
-
-    @Inject
-    ProcessedEventRepository processedRepository;
+    @Inject OutboxService outbox;
+    @Inject OrderUseCase service;
+    @Inject CorrelationIdProvider correlationIdProvider;
+    @Inject ProcessedEventRepository processedRepository;
+    @Inject OrderSagaRepository sagaRepository;
 
     @Transactional
     public UUID start(CreateOrderRequest request) {
+        String correlationId = getCorrelationId();
+
         Order order = new Order(new OrderId(UUID.randomUUID()));
         request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
         service.create(order);
+
+        sagaRepository.save(
+                OrderSagaState.builder()
+                        .orderId(order.getId().value())
+                        .step(OrderSagaState.SagaStep.WAITING_PAYMENT)
+                        .deadline(Instant.now().plusSeconds(30))
+                        .correlationId(correlationId)
+                        .build()
+        );
+
         outbox.save(
                 Order.class.getSimpleName(),
                 order.getId().value().toString(),
                 OutboxEventType.PAYMENT_REQUEST,
-                PaymentRequestEvent.of(
-                        order.getId().value(),
-                        request.customerId(),
-                        request.amount(),
-                        getCorrelationId()
-                )
+                PaymentRequestEvent.of(order.getId().value(), request.customerId(), request.amount(), correlationId)
         );
+
         return order.getId().value();
     }
 
     @Transactional
     public void onPaymentCompleted(PaymentCompletedEvent event) {
         if (!tryProcess(event.eventId())) return;
+
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+
         service.pay(new OrderId(event.orderId()));
+
+        saga.setStep(OrderSagaState.SagaStep.WAITING_RESTAURANT);
+        saga.setDeadline(Instant.now().plusSeconds(30));
+
         outbox.save(
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
@@ -65,25 +76,42 @@ public class OrderSagaOrchestrator {
     @Transactional
     public void onPaymentFailed(PaymentFailedEvent event) {
         if (!tryProcess(event.eventId())) return;
+
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+
         service.cancel(new OrderId(event.orderId()));
+        saga.setStep(OrderSagaState.SagaStep.CANCELLED);
     }
 
     @Transactional
     public void onRestaurantApproved(RestaurantApprovedEvent event) {
         if (!tryProcess(event.eventId())) return;
+
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+
         service.approve(new OrderId(event.orderId()));
+        saga.setStep(OrderSagaState.SagaStep.COMPLETED);
     }
 
     @Transactional
     public void onRestaurantRejected(RestaurantRejectedEvent event) {
         if (!tryProcess(event.eventId())) return;
+
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+
         service.cancel(new OrderId(event.orderId()));
+
         outbox.save(
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
                 OutboxEventType.PAYMENT_ROLLBACK,
                 PaymentRollbackEvent.of(event.orderId(), event.correlationId())
         );
+
+        saga.setStep(OrderSagaState.SagaStep.CANCELLED);
     }
 
     private String getCorrelationId() {

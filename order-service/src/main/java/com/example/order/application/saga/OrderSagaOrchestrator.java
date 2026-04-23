@@ -1,6 +1,7 @@
 package com.example.order.application.saga;
 
 import com.example.order.application.port.input.OrderUseCase;
+import com.example.order.domain.event.*;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
@@ -8,7 +9,6 @@ import com.example.order.infrastructure.outbox.OutboxEventType;
 import com.example.order.infrastructure.outbox.OutboxService;
 import com.example.order.infrastructure.persistence.idempotency.ProcessedEventRepository;
 import com.example.order.presentation.dto.CreateOrderRequest;
-import com.example.shared.events.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -58,10 +58,7 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
                 OutboxEventType.RESTAURANT_REQUEST,
-                RestaurantRequestEvent.of(
-                        event.orderId(),
-                        event.correlationId()
-                )
+                RestaurantRequestEvent.of(event.orderId(), event.correlationId())
         );
     }
 
@@ -85,10 +82,7 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 event.orderId().toString(),
                 OutboxEventType.PAYMENT_ROLLBACK,
-                PaymentRollbackEvent.of(
-                        event.orderId(),
-                        event.correlationId()
-                )
+                PaymentRollbackEvent.of(event.orderId(), event.correlationId())
         );
     }
 

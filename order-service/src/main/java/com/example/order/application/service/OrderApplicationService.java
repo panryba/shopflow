@@ -50,7 +50,7 @@ public class OrderApplicationService implements OrderUseCase {
     }
 
     @Override
-    public List<Order> findAll() {
-        return repository.findAll();
+    public List<Order> findAllOrders() {
+        return repository.findAllOrders();
     }
 }

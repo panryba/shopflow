@@ -1,59 +1,83 @@
 package com.example.payment.infrastructure.messaging;
 
-import com.example.shared.events.PaymentCompletedEvent;
-import com.example.shared.events.PaymentFailedEvent;
-import com.example.shared.events.PaymentRequestEvent;
-import com.example.shared.events.PaymentRollbackEvent;
 import io.quarkus.logging.Log;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Message;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 
 @ApplicationScoped
 public class PaymentEventConsumer {
 
+    private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+
     @Channel("payment-completed")
-    Emitter<PaymentCompletedEvent> successEmitter;
+    Emitter<com.example.order.events.avro.PaymentCompletedEvent> successEmitter;
 
     @Channel("payment-failed")
-    Emitter<PaymentFailedEvent> failedEmitter;
+    Emitter<com.example.order.events.avro.PaymentFailedEvent> failedEmitter;
 
     @Incoming("payment-request")
-    public void process(PaymentRequestEvent event) {
-        boolean success = processPayment(event);
+    public CompletionStage<Void> process(Message<com.example.order.events.avro.PaymentRequestEvent> message) {
+        try {
+            var avro = message.getPayload();
+            boolean success = processPayment(avro.getAmount().toString());
+            String orderId = avro.getOrderId().toString();
+            String correlationId = avro.getCorrelationId().toString();
 
-        if (success) {
-            Log.info("PAYMENT SUCCESS");
-            successEmitter.send(
-                Message.of(PaymentCompletedEvent.of(event.orderId(), event.correlationId()))
-                    .addMetadata(key(event.orderId()))
-            );
-        } else {
-            Log.info("PAYMENT FAILED");
-            failedEmitter.send(
-                Message.of(PaymentFailedEvent.of(event.orderId(), "Insufficient funds", event.correlationId()))
-                    .addMetadata(key(event.orderId()))
-            );
+            if (success) {
+                Log.info("PAYMENT SUCCESS");
+                successEmitter.send(Message.of(
+                        com.example.order.events.avro.PaymentCompletedEvent.newBuilder()
+                                .setEventId(UUID.randomUUID().toString())
+                                .setOrderId(orderId)
+                                .setCorrelationId(correlationId)
+                                .build())
+                        .addMetadata(key(orderId, correlationId)));
+            } else {
+                Log.info("PAYMENT FAILED");
+                failedEmitter.send(Message.of(
+                        com.example.order.events.avro.PaymentFailedEvent.newBuilder()
+                                .setEventId(UUID.randomUUID().toString())
+                                .setOrderId(orderId)
+                                .setReason("Insufficient funds")
+                                .setCorrelationId(correlationId)
+                                .build())
+                        .addMetadata(key(orderId, correlationId)));
+            }
+            return message.ack();
+        } catch (Exception e) {
+            return message.nack(e);
         }
     }
 
     @Incoming("payment-rollback")
-    public void rollback(PaymentRollbackEvent event) {
-        Log.infov("PAYMENT ROLLBACK id={0}", event.orderId());
+    public CompletionStage<Void> rollback(Message<com.example.order.events.avro.PaymentRollbackEvent> message) {
+        try {
+            Log.infov("PAYMENT ROLLBACK id={0}", message.getPayload().getOrderId().toString());
+            return message.ack();
+        } catch (Exception e) {
+            return message.nack(e);
+        }
     }
 
-    private boolean processPayment(PaymentRequestEvent event) {
-        return event.amount().doubleValue() < 1000;
+    private boolean processPayment(String amountStr) {
+        return new BigDecimal(amountStr).doubleValue() < 1000;
     }
 
-    private OutgoingKafkaRecordMetadata<String> key(UUID orderId) {
+    private OutgoingKafkaRecordMetadata<String> key(String orderId, String correlationId) {
         return OutgoingKafkaRecordMetadata.<String>builder()
-                .withKey(orderId.toString())
+                .withKey(orderId)
+                .withHeaders(new RecordHeaders()
+                        .add(CORRELATION_ID_HEADER, correlationId.getBytes(StandardCharsets.UTF_8)))
                 .build();
     }
 }

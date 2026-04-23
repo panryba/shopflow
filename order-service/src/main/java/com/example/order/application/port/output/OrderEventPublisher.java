@@ -1,8 +1,8 @@
 package com.example.order.application.port.output;
 
-import com.example.shared.events.PaymentRequestEvent;
-import com.example.shared.events.PaymentRollbackEvent;
-import com.example.shared.events.RestaurantRequestEvent;
+import com.example.order.domain.event.PaymentRequestEvent;
+import com.example.order.domain.event.PaymentRollbackEvent;
+import com.example.order.domain.event.RestaurantRequestEvent;
 
 public interface OrderEventPublisher {
     void publishPaymentRequest(PaymentRequestEvent event);

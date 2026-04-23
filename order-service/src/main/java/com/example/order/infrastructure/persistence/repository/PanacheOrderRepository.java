@@ -31,7 +31,7 @@ public class PanacheOrderRepository implements OrderRepository, PanacheRepositor
     }
 
     @Override
-    public List<Order> findAll() {
+    public List<Order> findAllOrders() {
         return listAll().stream().map(mapper::toDomain).toList();
     }
 

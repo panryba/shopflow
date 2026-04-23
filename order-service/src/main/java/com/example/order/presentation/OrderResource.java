@@ -55,7 +55,7 @@ public class OrderResource {
     @GET
     @Retry(maxRetries = 3, delay = 200, jitter = 200, retryOn = PersistenceException.class)
     public List<OrderResponse> getAll() {
-        return service.findAll().stream().map(mapper::toResponse).toList();
+        return service.findAllOrders().stream().map(mapper::toResponse).toList();
     }
 
     @GET

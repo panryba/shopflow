@@ -46,13 +46,12 @@
             <artifactId>quarkus-messaging-kafka</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.example.order</groupId>
-            <artifactId>shared-events</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-apicurio-registry-avro</artifactId>
         </dependency>
     </dependencies>
 

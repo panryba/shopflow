@@ -10,5 +10,5 @@ public interface OrderRepository {
     void save(Order order);
     Optional<Order> findById(OrderId id);
     void update(Order order);
-    List<Order> findAll();
+    List<Order> findAllOrders();
 }

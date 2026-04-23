@@ -16,8 +16,7 @@
 
   <modules>
     <module>order-service</module>
-    <module>shared-events</module>
-    <module>payment-service</module>
+<module>payment-service</module>
     <module>restaurant-service</module>
   </modules>
 

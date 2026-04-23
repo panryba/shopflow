@@ -11,5 +11,5 @@ public interface OrderUseCase {
     void approve(OrderId orderId);
     void cancel(OrderId orderId);
     Order findById(OrderId id);
-    List<Order> findAll();
+    List<Order> findAllOrders();
 }

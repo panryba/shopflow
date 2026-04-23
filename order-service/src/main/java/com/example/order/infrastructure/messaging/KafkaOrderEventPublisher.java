@@ -1,9 +1,9 @@
 package com.example.order.infrastructure.messaging;
 
 import com.example.order.application.port.output.OrderEventPublisher;
-import com.example.shared.events.PaymentRequestEvent;
-import com.example.shared.events.PaymentRollbackEvent;
-import com.example.shared.events.RestaurantRequestEvent;
+import com.example.order.domain.event.PaymentRequestEvent;
+import com.example.order.domain.event.PaymentRollbackEvent;
+import com.example.order.domain.event.RestaurantRequestEvent;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -20,30 +20,47 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
     public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
     @Channel("payment-request")
-    Emitter<PaymentRequestEvent> paymentEmitter;
+    Emitter<com.example.order.events.avro.PaymentRequestEvent> paymentEmitter;
 
     @Channel("restaurant-request")
-    Emitter<RestaurantRequestEvent> restaurantEmitter;
+    Emitter<com.example.order.events.avro.RestaurantRequestEvent> restaurantEmitter;
 
     @Channel("payment-rollback")
-    Emitter<PaymentRollbackEvent> rollbackEmitter;
+    Emitter<com.example.order.events.avro.PaymentRollbackEvent> rollbackEmitter;
 
     @Override
     public void publishPaymentRequest(PaymentRequestEvent event) {
-        sendWithCorrelation(paymentEmitter, event.orderId(), event.correlationId(), event);
+        var avro = com.example.order.events.avro.PaymentRequestEvent.newBuilder()
+                .setEventId(event.eventId())
+                .setOrderId(event.orderId().toString())
+                .setCustomerId(event.customerId().toString())
+                .setAmount(event.amount().toPlainString())
+                .setCorrelationId(event.correlationId())
+                .build();
+        send(paymentEmitter, event.orderId(), event.correlationId(), avro);
     }
 
     @Override
     public void publishRestaurantRequest(RestaurantRequestEvent event) {
-        sendWithCorrelation(restaurantEmitter, event.orderId(), event.correlationId(), event);
+        var avro = com.example.order.events.avro.RestaurantRequestEvent.newBuilder()
+                .setEventId(event.eventId())
+                .setOrderId(event.orderId().toString())
+                .setCorrelationId(event.correlationId())
+                .build();
+        send(restaurantEmitter, event.orderId(), event.correlationId(), avro);
     }
 
     @Override
     public void publishPaymentRollback(PaymentRollbackEvent event) {
-        sendWithCorrelation(rollbackEmitter, event.orderId(), event.correlationId(), event);
+        var avro = com.example.order.events.avro.PaymentRollbackEvent.newBuilder()
+                .setEventId(event.eventId())
+                .setOrderId(event.orderId().toString())
+                .setCorrelationId(event.correlationId())
+                .build();
+        send(rollbackEmitter, event.orderId(), event.correlationId(), avro);
     }
 
-    private <T> void sendWithCorrelation(Emitter<T> emitter, UUID key, String correlationId, T payload) {
+    private <T> void send(Emitter<T> emitter, UUID key, String correlationId, T payload) {
         var metadata = OutgoingKafkaRecordMetadata.<String>builder()
                 .withKey(key.toString())
                 .withHeaders(new RecordHeaders()

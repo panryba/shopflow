@@ -1,7 +1,10 @@
 package com.example.order.infrastructure.messaging;
 
 import com.example.order.application.saga.OrderSagaOrchestrator;
-import com.example.order.domain.event.*;
+import com.example.order.domain.event.InventoryApprovedEvent;
+import com.example.order.domain.event.InventoryRejectedEvent;
+import com.example.order.domain.event.PaymentCompletedEvent;
+import com.example.order.domain.event.PaymentFailedEvent;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import io.quarkus.logging.Log;
 import io.smallrye.reactive.messaging.annotations.Blocking;
@@ -59,43 +62,46 @@ public class OrderEventConsumer {
                     avro.getCorrelationId().toString()));
             return message.ack();
         } catch (Exception e) {
+            Log.errorf(e, "onPaymentFailed failed: %s", e.getMessage());
             return message.nack(e);
         } finally {
             clearMDC();
         }
     }
 
-    @Incoming("restaurant-approved")
+    @Incoming("inventory-approved")
     @Blocking
     @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
-    public CompletionStage<Void> onRestaurantApproved(Message<com.example.order.events.avro.RestaurantApprovedEvent> message) {
+    public CompletionStage<Void> onInventoryApproved(Message<com.example.order.events.avro.InventoryApprovedEvent> message) {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            orchestrator.onRestaurantApproved(new RestaurantApprovedEvent(
+            orchestrator.onInventoryApproved(new InventoryApprovedEvent(
                     avro.getEventId().toString(), UUID.fromString(avro.getOrderId().toString()), avro.getCorrelationId().toString()));
             return message.ack();
         } catch (Exception e) {
+            Log.errorf(e, "onInventoryApproved failed: %s", e.getMessage());
             return message.nack(e);
         } finally {
             clearMDC();
         }
     }
 
-    @Incoming("restaurant-rejected")
+    @Incoming("inventory-rejected")
     @Blocking
     @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
-    public CompletionStage<Void> onRestaurantRejected(Message<com.example.order.events.avro.RestaurantRejectedEvent> message) {
+    public CompletionStage<Void> onInventoryRejected(Message<com.example.order.events.avro.InventoryRejectedEvent> message) {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            orchestrator.onRestaurantRejected(new RestaurantRejectedEvent(
+            orchestrator.onInventoryRejected(new InventoryRejectedEvent(
                     avro.getEventId().toString(),
                     UUID.fromString(avro.getOrderId().toString()),
                     avro.getReason() != null ? avro.getReason().toString() : null,
                     avro.getCorrelationId().toString()));
             return message.ack();
         } catch (Exception e) {
+            Log.errorf(e, "onInventoryRejected failed: %s", e.getMessage());
             return message.nack(e);
         } finally {
             clearMDC();

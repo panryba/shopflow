@@ -1,7 +1,13 @@
 package com.example.order.application.saga;
 
 import com.example.order.application.port.input.OrderUseCase;
-import com.example.order.domain.event.*;
+import com.example.order.domain.event.InventoryApprovedEvent;
+import com.example.order.domain.event.InventoryRejectedEvent;
+import com.example.order.domain.event.InventoryRequestEvent;
+import com.example.order.domain.event.PaymentCompletedEvent;
+import com.example.order.domain.event.PaymentFailedEvent;
+import com.example.order.domain.event.PaymentRequestEvent;
+import com.example.order.domain.event.PaymentRollbackEvent;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
 import com.example.order.infrastructure.inbox.InboxService;
@@ -31,6 +37,8 @@ public class OrderSagaOrchestrator {
 
         Order order = new Order(new OrderId(UUID.randomUUID()));
         request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
+        var total = order.totalAmount(); // validates non-empty before any DB write
+
         service.create(order);
 
         sagaRepository.save(
@@ -46,7 +54,7 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 order.getId().value().toString(),
                 OutboxEventType.PAYMENT_REQUEST,
-                PaymentRequestEvent.of(order.getId().value(), request.customerId(), request.amount(), correlationId)
+                PaymentRequestEvent.of(order.getId().value(), request.customerId(), total.amount(), correlationId)
         );
 
         return order.getId().value();
@@ -62,14 +70,14 @@ public class OrderSagaOrchestrator {
 
             service.pay(new OrderId(event.orderId()));
 
-            saga.setStep(OrderSagaState.SagaStep.WAITING_RESTAURANT);
+            saga.setStep(OrderSagaState.SagaStep.WAITING_INVENTORY);
             saga.setDeadline(Instant.now().plusSeconds(30));
 
             outbox.save(
                     Order.class.getSimpleName(),
                     event.orderId().toString(),
-                    OutboxEventType.RESTAURANT_REQUEST,
-                    RestaurantRequestEvent.of(event.orderId(), event.correlationId())
+                    OutboxEventType.INVENTORY_REQUEST,
+                    InventoryRequestEvent.of(event.orderId(), event.correlationId())
             );
 
             inbox.markProcessed(event.eventId());
@@ -100,14 +108,14 @@ public class OrderSagaOrchestrator {
     }
 
     @Transactional
-    public void onRestaurantApproved(RestaurantApprovedEvent event) {
-        if (!inbox.receive(event.eventId(), "RestaurantApproved")) return;
+    public void onInventoryApproved(InventoryApprovedEvent event) {
+        if (!inbox.receive(event.eventId(), "InventoryApproved")) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());
             if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.approve(new OrderId(event.orderId()));
+            service.complete(new OrderId(event.orderId()));
             saga.setStep(OrderSagaState.SagaStep.COMPLETED);
 
             inbox.markProcessed(event.eventId());
@@ -119,8 +127,8 @@ public class OrderSagaOrchestrator {
     }
 
     @Transactional
-    public void onRestaurantRejected(RestaurantRejectedEvent event) {
-        if (!inbox.receive(event.eventId(), "RestaurantRejected")) return;
+    public void onInventoryRejected(InventoryRejectedEvent event) {
+        if (!inbox.receive(event.eventId(), "InventoryRejected")) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());

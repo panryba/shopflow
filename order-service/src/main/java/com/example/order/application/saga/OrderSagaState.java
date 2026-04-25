@@ -35,13 +35,13 @@ public class OrderSagaState {
 
     public enum SagaStep {
         WAITING_PAYMENT,
-        WAITING_RESTAURANT,
+        WAITING_INVENTORY,
         COMPLETED,
         CANCELLED
     }
 
     public boolean isWaiting() {
         return step == SagaStep.WAITING_PAYMENT
-            || step == SagaStep.WAITING_RESTAURANT;
+            || step == SagaStep.WAITING_INVENTORY;
     }
 }

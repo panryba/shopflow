@@ -18,7 +18,6 @@ public class OrderApplicationService implements OrderUseCase {
 
     @Override
     public void create(Order order) {
-        order.confirm();
         repository.save(order);
     }
 
@@ -30,9 +29,9 @@ public class OrderApplicationService implements OrderUseCase {
     }
 
     @Override
-    public void approve(OrderId orderId) {
+    public void complete(OrderId orderId) {
         Order order = repository.findById(orderId).orElseThrow();
-        order.approve();
+        order.complete();
         repository.update(order);
     }
 

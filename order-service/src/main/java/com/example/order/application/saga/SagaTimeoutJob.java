@@ -39,7 +39,7 @@ public class SagaTimeoutJob {
 
         switch (saga.getStep()) {
             case WAITING_PAYMENT -> orderService.cancel(orderId);
-            case WAITING_RESTAURANT -> {
+            case WAITING_INVENTORY -> {
                 orderService.cancel(orderId);
                 outbox.save(
                         Order.class.getSimpleName(),

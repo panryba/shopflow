@@ -2,7 +2,7 @@ package com.example.order.infrastructure.outbox;
 
 import com.example.order.domain.event.PaymentRequestEvent;
 import com.example.order.domain.event.PaymentRollbackEvent;
-import com.example.order.domain.event.RestaurantRequestEvent;
+import com.example.order.domain.event.InventoryRequestEvent;
 import com.example.order.infrastructure.messaging.KafkaOrderEventPublisher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.logging.Log;
@@ -59,9 +59,9 @@ public class OutboxPublisherJob {
                 var payload = objectMapper.readValue(event.getPayload(), PaymentRequestEvent.class);
                 kafka.publishPaymentRequest(payload);
             }
-            case RESTAURANT_REQUEST -> {
-                var payload = objectMapper.readValue(event.getPayload(), RestaurantRequestEvent.class);
-                kafka.publishRestaurantRequest(payload);
+            case INVENTORY_REQUEST -> {
+                var payload = objectMapper.readValue(event.getPayload(), InventoryRequestEvent.class);
+                kafka.publishInventoryRequest(payload);
             }
             case PAYMENT_ROLLBACK -> {
                 var payload = objectMapper.readValue(event.getPayload(), PaymentRollbackEvent.class);

@@ -33,21 +33,23 @@ public class Order {
         items.add(new OrderItem(UUID.randomUUID(), this.id, productId, quantity, new Money(price)));
     }
 
-    public void confirm() {
-        if (items.isEmpty()) throw new IllegalStateException();
-        this.status = OrderStatus.CREATED;
+    public Money totalAmount() {
+        if (items.isEmpty()) throw new IllegalStateException("Order has no items");
+        return items.stream()
+                .map(i -> i.price().multiply(i.quantity()))
+                .reduce(Money.ZERO, Money::add);
     }
 
     public void pay() {
         if (status == OrderStatus.CANCELLED) return;
-        if (status != OrderStatus.CREATED) throw new IllegalStateException("Invalid state transition");
+        if (status != OrderStatus.PENDING) throw new IllegalStateException("Invalid state transition");
         this.status = OrderStatus.PAID;
     }
 
-    public void approve() {
+    public void complete() {
         if (status == OrderStatus.CANCELLED) return;
-        if (status != OrderStatus.PAID) throw new IllegalStateException("Cannot approve");
-        this.status = OrderStatus.APPROVED;
+        if (status != OrderStatus.PAID) throw new IllegalStateException("Cannot complete");
+        this.status = OrderStatus.COMPLETED;
     }
 
     public void cancel() {

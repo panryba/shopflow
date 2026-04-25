@@ -27,7 +27,7 @@ public class OrderSagaRepository implements PanacheRepositoryBase<OrderSagaState
         return em.createNativeQuery("""
                 SELECT * FROM order_saga
                 WHERE deadline < :now
-                  AND step IN ('WAITING_PAYMENT', 'WAITING_RESTAURANT')
+                  AND step IN ('WAITING_PAYMENT', 'WAITING_INVENTORY')
                 FOR UPDATE SKIP LOCKED
                 """, OrderSagaState.class)
                 .setParameter("now", now)

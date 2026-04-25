@@ -1,9 +1,9 @@
 package com.example.order.infrastructure.messaging;
 
 import com.example.order.application.port.output.OrderEventPublisher;
+import com.example.order.domain.event.InventoryRequestEvent;
 import com.example.order.domain.event.PaymentRequestEvent;
 import com.example.order.domain.event.PaymentRollbackEvent;
-import com.example.order.domain.event.RestaurantRequestEvent;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -22,8 +22,8 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
     @Channel("payment-request")
     Emitter<com.example.order.events.avro.PaymentRequestEvent> paymentEmitter;
 
-    @Channel("restaurant-request")
-    Emitter<com.example.order.events.avro.RestaurantRequestEvent> restaurantEmitter;
+    @Channel("inventory-request")
+    Emitter<com.example.order.events.avro.InventoryRequestEvent> inventoryEmitter;
 
     @Channel("payment-rollback")
     Emitter<com.example.order.events.avro.PaymentRollbackEvent> rollbackEmitter;
@@ -41,13 +41,13 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
     }
 
     @Override
-    public void publishRestaurantRequest(RestaurantRequestEvent event) {
-        var avro = com.example.order.events.avro.RestaurantRequestEvent.newBuilder()
+    public void publishInventoryRequest(InventoryRequestEvent event) {
+        var avro = com.example.order.events.avro.InventoryRequestEvent.newBuilder()
                 .setEventId(event.eventId())
                 .setOrderId(event.orderId().toString())
                 .setCorrelationId(event.correlationId())
                 .build();
-        send(restaurantEmitter, event.orderId(), event.correlationId(), avro);
+        send(inventoryEmitter, event.orderId(), event.correlationId(), avro);
     }
 
     @Override

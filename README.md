@@ -14,41 +14,44 @@ graph TB
         UI[Angular Frontend]
     end
 
+    subgraph Auth["Auth (Keycloak)"]
+        KC[Keycloak<br/>OIDC / JWT]
+    end
+
     subgraph Gateway["API Gateway (Quarkus)"]
-        GW[Request Router\n+ JWT Validation]
-        KC[Keycloak\nOIDC / JWT]
+        GW[Request Router<br/>+ JWT Validation]
     end
 
     subgraph Services
-        OS["Order Service :8080\n(Saga Orchestrator)"]
+        OS["Order Service :8080<br/>(Saga Orchestrator)"]
         PS[Payment Service :8081]
         IS[Inventory Service :8082]
     end
 
     subgraph Messaging["Event Bus"]
         K[Apache Kafka]
-        SR[Apicurio\nSchema Registry]
+        SR[Apicurio<br/>Schema Registry]
     end
 
     subgraph Storage
-        ODB[(Order DB\nPostgreSQL)]
+        ODB[(Order DB<br/>PostgreSQL)]
     end
 
     UI -->|HTTPS + JWT| GW
-    GW <-->|token validation| KC
+    GW -->|validate token| KC
     GW -->|route| OS
 
     OS <--> ODB
-    OS -->|payment-request\npayment-rollback| K
+    OS -->|payment-request<br/>payment-rollback| K
     OS -->|inventory-request| K
-    K -->|payment-completed\npayment-failed| OS
-    K -->|inventory-approved\ninventory-rejected| OS
+    K -->|payment-completed<br/>payment-failed| OS
+    K -->|inventory-approved<br/>inventory-rejected| OS
 
-    K --> PS
-    PS -->|payment-completed\npayment-failed| K
+    PS -->|consume payment-request<br/>payment-rollback| K
+    PS -->|payment-completed<br/>payment-failed| K
 
-    K --> IS
-    IS -->|inventory-approved\ninventory-rejected| K
+    IS -->|consume inventory-request| K
+    IS -->|inventory-approved<br/>inventory-rejected| K
 
     K <-->|Avro schema lookup| SR
 ```

@@ -28,6 +28,7 @@ public class OrderSagaRepository implements PanacheRepositoryBase<OrderSagaState
                 SELECT * FROM order_saga
                 WHERE deadline < :now
                   AND step IN ('WAITING_PAYMENT', 'WAITING_INVENTORY')
+                ORDER BY deadline
                 FOR UPDATE SKIP LOCKED
                 """, OrderSagaState.class)
                 .setParameter("now", now)

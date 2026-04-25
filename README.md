@@ -66,13 +66,13 @@ graph TB
 The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
 
 ### Transactional Outbox
-The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled `OutboxPublisherJob` reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried.
+The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled `OutboxPublisherJob` reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern).
 
 ### Idempotent Consumer (Inbox)
-Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery (Kafka at-least-once guarantee), the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
+The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
 
 ### Dead Letter Queue
-Each consumer channel is configured with `failure-strategy=dead-letter-queue`. After 5 retries with exponential backoff (1s → 30s), a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
+Each consumer channel is configured with `failure-strategy=dead-letter-queue`. Retries are handled via application-level `@Retry` and Kafka redelivery. After repeated failures, a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
 
 ### Saga Timeout
 A `SagaTimeoutJob` runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
@@ -99,6 +99,17 @@ Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all me
 
 ### Concurrency Control
 All REST handlers and Kafka consumers in the `order-service` are annotated with `@Retry(retryOn = OptimisticLockException.class)`. If two concurrent requests attempt to update the same order or saga row simultaneously, JPA throws an `OptimisticLockException` and the operation is retried automatically with jitter. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
+
+---
+
+## Delivery Guarantees
+
+| Concern | Guarantee |
+|---------|-----------|
+| Messaging | At-least-once |
+| Outbox | Eventual delivery — survives crashes, retried until published |
+| Inbox | Idempotent processing — duplicates detected and discarded |
+| Saga | Eventual consistency — every step is recoverable or compensated |
 
 ---
 
@@ -248,5 +259,5 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 - [ ] **Authentication** — Keycloak OIDC, JWT propagation through all services
 - [ ] **Angular Frontend** — product listing, shopping cart, checkout, real-time order status via SSE
 - [ ] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
-- [ ] **Observability** — Prometheus metrics, Grafana dashboard (order throughput, saga timeouts, outbox lag, DLQ size)
+- [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification

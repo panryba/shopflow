@@ -140,14 +140,6 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 | inventory-service | 8082 | Simulates inventory availability check |
 | frontend | 4200 | Angular SPA (served by nginx in Docker) |
 
-**Simulating failures:**
-
-| Scenario | How |
-|----------|-----|
-| Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8082/inventory/mode?accept=false` then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8082/inventory/mode?accept=true` |
-
 ---
 
 ## Saga Flow
@@ -190,6 +182,14 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
   WAITING_PAYMENT   → cancel order
   WAITING_INVENTORY → cancel order + payment-rollback
 ```
+
+### Simulating Failures
+
+| Scenario | How |
+|----------|-----|
+| Payment failure | Place an order where total exceeds 1000 |
+| Inventory rejection | `PUT http://localhost:8082/inventory/mode?accept=false` then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8082/inventory/mode?accept=true` |
 
 ---
 

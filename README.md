@@ -139,9 +139,13 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 | payment-service | 8081 | Simulates payment processing |
 | inventory-service | 8082 | Simulates inventory availability check |
 
-**Business rules (current simulation):**
-- Payment service accepts orders where `amount < 1000`, rejects otherwise
-- Inventory service always accepts (comment out the flag in `InventoryEventConsumer` to simulate rejection)
+**Simulating failures:**
+
+| Scenario | How |
+|----------|-----|
+| Payment failure | Place an order where total exceeds 1000 |
+| Inventory rejection | `PUT http://localhost:8082/inventory/mode?accept=false` then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8082/inventory/mode?accept=true` |
 
 ---
 

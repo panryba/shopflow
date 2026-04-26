@@ -148,8 +148,8 @@ jobs:
           file: order-service/src/main/docker/Dockerfile.jvm
           push: true
           tags: |
-            shopflow/order-service:latest
-            shopflow/order-service:${{ github.sha }}
+            tbzowka/order-service:latest
+            tbzowka/order-service:${{ github.sha }}
 
       - name: Build and push payment-service
         uses: docker/build-push-action@v6
@@ -158,8 +158,8 @@ jobs:
           file: payment-service/src/main/docker/Dockerfile.jvm
           push: true
           tags: |
-            shopflow/payment-service:latest
-            shopflow/payment-service:${{ github.sha }}
+            tbzowka/payment-service:latest
+            tbzowka/payment-service:${{ github.sha }}
 
       - name: Build and push inventory-service
         uses: docker/build-push-action@v6
@@ -168,8 +168,8 @@ jobs:
           file: inventory-service/src/main/docker/Dockerfile.jvm
           push: true
           tags: |
-            shopflow/inventory-service:latest
-            shopflow/inventory-service:${{ github.sha }}
+            tbzowka/inventory-service:latest
+            tbzowka/inventory-service:${{ github.sha }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
@@ -178,5 +178,5 @@ jobs:
           file: frontend/Dockerfile
           push: true
           tags: |
-            shopflow/frontend:latest
-            shopflow/frontend:${{ github.sha }}
+            tbzowka/frontend:latest
+            tbzowka/frontend:${{ github.sha }}

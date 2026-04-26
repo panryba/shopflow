@@ -47,7 +47,7 @@ services:
       retries: 10
 
   order-service:
-    image: shopflow/order-service:latest
+    image: tbzowka/order-service:latest
     build:
       context: order-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -62,7 +62,7 @@ services:
         condition: service_healthy
 
   payment-service:
-    image: shopflow/payment-service:latest
+    image: tbzowka/payment-service:latest
     build:
       context: payment-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -75,7 +75,7 @@ services:
         condition: service_healthy
 
   inventory-service:
-    image: shopflow/inventory-service:latest
+    image: tbzowka/inventory-service:latest
     build:
       context: inventory-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -88,7 +88,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: shopflow/frontend:latest
+    image: tbzowka/frontend:latest
     build:
       context: frontend
       dockerfile: Dockerfile

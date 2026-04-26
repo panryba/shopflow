@@ -1,8 +1,26 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-21-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Java](https://img.shields.io/badge/Java-21-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
 A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Avro + Schema Registry**, and **Saga Timeout**.
+
+---
+
+## Quick Start
+
+> Requires [Docker](https://docs.docker.com/get-docker/) and Docker Compose. No Java, Maven, or Node installation needed.
+
+```bash
+git clone https://github.com/panryba/shop-microservices.git
+cd shop-microservices
+docker compose up
+```
+
+| Endpoint | URL |
+|----------|-----|
+| Order Service API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/q/swagger-ui |
+| Frontend | http://localhost:4200 |
 
 ---
 

@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-21-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
 A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Avro + Schema Registry**, and **Saga Timeout**.
 
@@ -138,6 +138,7 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 | order-service | 8080 | Saga orchestrator, order lifecycle, REST API |
 | payment-service | 8081 | Simulates payment processing |
 | inventory-service | 8082 | Simulates inventory availability check |
+| frontend | 4200 | Angular SPA (served by nginx in Docker) |
 
 **Simulating failures:**
 
@@ -265,12 +266,14 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Quarkus 3.33, Java 21 |
+| Runtime | Quarkus 3.33, Java 25 |
+| Frontend | Angular 21, nginx |
 | Messaging | Apache Kafka, SmallRye Reactive Messaging |
 | Serialization | Apache Avro, Apicurio Schema Registry |
 | Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
 | Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
 | API | JAX-RS, OpenAPI / Swagger UI |
+| Infrastructure | Docker, Docker Compose, GitHub Actions |
 
 ---
 

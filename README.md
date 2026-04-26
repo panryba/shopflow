@@ -150,14 +150,14 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 ### Happy Path
 
 ```
-Client          Order Service        Payment Service    Inventory Service
-  |                   |                    |                   |
-  |-- POST /orders --> |                   |                   |
-  |                   |-- payment-request->|                   |
-  |                   |<-payment-completed-|                   |
-  |                   |-- inventory-request------------------->|
-  |                   |<-inventory-approved--------------------|
-  |                   |                                        |
+Client           Order Service        Payment Service    Inventory Service
+  |                    |                    |                   |
+  |-- POST /orders --> |                    |                   |
+  |                    |-- payment-request->|                   |
+  |                    |<-payment-completed-|                   |
+  |                    |-- inventory-request------------------->|
+  |                    |<-inventory-approved--------------------|
+  |                    |                                        |
   |              status: COMPLETED                              |
 ```
 

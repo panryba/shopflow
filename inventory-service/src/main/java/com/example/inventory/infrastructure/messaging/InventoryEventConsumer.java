@@ -24,7 +24,7 @@ public class InventoryEventConsumer {
     @Channel("inventory-rejected")
     Emitter<com.example.order.events.avro.InventoryRejectedEvent> rejectedEmitter;
 
-    volatile boolean accepted = true;
+    public volatile boolean accepted = true;
 
     @Incoming("inventory-request")
     public CompletionStage<Void> process(Message<com.example.order.events.avro.InventoryRequestEvent> message) {

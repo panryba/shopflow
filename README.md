@@ -270,6 +270,27 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 
 ---
 
+## CI/CD
+
+Every push to `master` triggers the pipeline. Pull requests run build and test only — no push to Docker Hub.
+
+```mermaid
+graph LR
+    subgraph parallel["Parallel"]
+        B["build-backend<br/>─────────────<br/>Java 21 + Maven cache<br/>mvn package -DskipTests<br/>mvn verify -DskipCompile<br/>(when tests exist)<br/>upload artifacts"]
+        F["build-frontend<br/>─────────────<br/>Node 24<br/>npm ci<br/>npm run build<br/>npm test<br/>(when tests exist)"]
+    end
+
+    D["docker-push<br/>─────────────<br/>download artifacts<br/>build 4 images<br/>push to Docker Hub<br/>(master only)"]
+
+    B --> D
+    F --> D
+```
+
+Images pushed: `tbzowka/{order-service,payment-service,inventory-service,frontend}:latest`
+
+---
+
 ## Roadmap
 
 - [ ] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Zookeeper, Apicurio, PostgreSQL

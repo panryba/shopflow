@@ -80,6 +80,17 @@ graph TB
 
 ## Patterns Implemented
 
+### Hexagonal Architecture (Ports & Adapters)
+The `order-service` is structured in three layers with strict dependency direction (inward only):
+- **Domain** — pure Java, no framework dependencies
+- **Application** — use cases and saga orchestration, depends only on domain
+- **Infrastructure** — Kafka, JPA, outbox, inbox; implements the output ports defined by the application layer
+
+Payment and inventory services are intentionally thin — their sole responsibility is to simulate an external system responding to events.
+
+### Domain-Driven Design
+The `order-service` domain layer models the business explicitly: `Order` is the aggregate root, `OrderItem` is a child entity, `Money` and `OrderId` are value objects, and `OrderStatus` is a state enum. No Quarkus, JPA, or Kafka annotation touches this layer. Infrastructure concerns (persistence, messaging) implement ports defined by the application layer and depend inward — never the other way around.
+
 ### Saga Orchestrator
 The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
 
@@ -98,22 +109,11 @@ A `SagaTimeoutJob` runs every 10 seconds and finds sagas where the step deadline
 ### Avro + Schema Registry
 All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. Each service owns its schema files under `src/main/avro/consumed/` and `src/main/avro/produced/`. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
 
-### Correlation ID Tracing
-Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order's full journey across all three services in aggregated logs.
-
-### Hexagonal Architecture (Ports & Adapters)
-The `order-service` is structured in three layers with strict dependency direction (inward only):
-- **Domain** — pure Java, no framework dependencies
-- **Application** — use cases and saga orchestration, depends only on domain
-- **Infrastructure** — Kafka, JPA, outbox, inbox; implements the output ports defined by the application layer
-
-Payment and inventory services are intentionally thin — their sole responsibility is to simulate an external system responding to events.
-
-### Domain-Driven Design
-The `order-service` domain layer models the business explicitly: `Order` is the aggregate root, `OrderItem` is a child entity, `Money` and `OrderId` are value objects, and `OrderStatus` is a state enum. No Quarkus, JPA, or Kafka annotation touches this layer. Infrastructure concerns (persistence, messaging) implement ports defined by the application layer and depend inward — never the other way around.
-
 ### Partition Key Consistency
 Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions.
+
+### Correlation ID Tracing
+Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order's full journey across all three services in aggregated logs.
 
 ### Concurrency Control
 All REST handlers and Kafka consumers in the `order-service` are annotated with `@Retry(retryOn = OptimisticLockException.class)`. If two concurrent requests attempt to update the same order or saga row simultaneously, JPA throws an `OptimisticLockException` and the operation is retried automatically with jitter. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.

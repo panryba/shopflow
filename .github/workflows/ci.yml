@@ -20,6 +20,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Make Maven wrappers executable
+        run: chmod +x order-service/mvnw payment-service/mvnw inventory-service/mvnw
+
       - name: Build order-service
         run: cd order-service && ./mvnw package -DskipTests
 
@@ -92,7 +95,7 @@ jobs:
       - name: Test
         run: |
           if grep -q '"test"' frontend/package.json; then
-            cd frontend && npm test -- --watch=false --browsers=ChromeHeadless
+            cd frontend && npm test -- --watch=false
           else
             echo "No tests found, skipping"
           fi

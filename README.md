@@ -192,7 +192,7 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
 | Scenario | How |
 |----------|-----|
 | Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` then place any order |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false`<br/>then place any order |
 | Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` |
 
 ---

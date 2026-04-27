@@ -24,7 +24,12 @@ public class InventoryEventConsumer {
     @Channel("inventory-rejected")
     Emitter<com.example.order.events.avro.InventoryRejectedEvent> rejectedEmitter;
 
-    public volatile boolean accepted = true;
+    private volatile boolean accepted = true;
+
+    public void setAccepted(boolean accepted) {
+        Log.infof("Inventory mode changed: accept=%s", accepted);
+        this.accepted = accepted;
+    }
 
     @Incoming("inventory-request")
     public CompletionStage<Void> process(Message<com.example.order.events.avro.InventoryRequestEvent> message) {

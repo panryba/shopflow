@@ -15,6 +15,7 @@ import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.outbox.OutboxEventType;
 import com.example.order.infrastructure.outbox.OutboxService;
 import com.example.order.presentation.dto.CreateOrderRequest;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -57,6 +58,7 @@ public class OrderSagaOrchestrator {
                 PaymentRequestEvent.of(order.getId().value(), request.customerId(), total.amount(), correlationId)
         );
 
+        Log.infof("Saga started orderId=%s step=WAITING_PAYMENT total=%s", order.getId().value(), total.amount());
         return order.getId().value();
     }
 
@@ -80,6 +82,7 @@ public class OrderSagaOrchestrator {
                     InventoryRequestEvent.of(event.orderId(), event.correlationId())
             );
 
+            Log.infof("Payment completed orderId=%s step=WAITING_INVENTORY", event.orderId());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -99,6 +102,7 @@ public class OrderSagaOrchestrator {
             service.cancel(new OrderId(event.orderId()));
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
 
+            Log.infof("Payment failed orderId=%s step=CANCELLED reason=%s", event.orderId(), event.reason());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -118,6 +122,7 @@ public class OrderSagaOrchestrator {
             service.complete(new OrderId(event.orderId()));
             saga.setStep(OrderSagaState.SagaStep.COMPLETED);
 
+            Log.infof("Inventory approved orderId=%s step=COMPLETED", event.orderId());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -145,6 +150,7 @@ public class OrderSagaOrchestrator {
 
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
 
+            Log.infof("Inventory rejected orderId=%s step=CANCELLED+ROLLBACK reason=%s", event.orderId(), event.reason());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {

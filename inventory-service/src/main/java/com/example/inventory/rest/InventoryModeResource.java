@@ -16,7 +16,7 @@ public class InventoryModeResource {
     @PUT
     @Path("/mode")
     public Response setMode(@QueryParam("accept") boolean accept) {
-        consumer.accepted = accept;
+        consumer.setAccepted(accept);
         return Response.ok("Inventory acceptance set to: " + accept).build();
     }
 }

@@ -1,7 +1,6 @@
 package com.example.gateway.client;
 
 import com.example.gateway.infrastructure.filter.OutgoingCorrelationIdFilter;
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -24,7 +23,7 @@ import java.util.UUID;
 public interface OrderServiceClient {
 
     @POST
-    Response create(JsonObject body);
+    Response create(String body);
 
     @GET
     Response getAll();

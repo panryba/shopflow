@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, and **Concurrency Control**.
+A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, and **API Gateway**.
 
 ---
 
@@ -18,8 +18,8 @@ docker compose up
 
 | Endpoint | URL |
 |----------|-----|
-| Order Service API | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/q/swagger-ui |
+| API Gateway | http://localhost:8090 |
+| Gateway Swagger UI | http://localhost:8090/q/swagger-ui |
 | Frontend | http://localhost:4200 |
 
 ---
@@ -74,7 +74,7 @@ graph TB
     K <-->|Avro schema lookup| SR
 ```
 
-> Components marked in italics (API Gateway, Keycloak, Angular) are planned — see [Roadmap](#roadmap).
+> Keycloak (Auth) is planned — see [Roadmap](#roadmap).
 
 ---
 
@@ -115,6 +115,9 @@ Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all me
 ### Correlation ID Tracing
 Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order's full journey across all three services in aggregated logs.
 
+### API Gateway
+A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Unreachable downstream services map to a `502 Bad Gateway` response; 4xx errors from downstream pass through unchanged.
+
 ### Concurrency Control
 All REST handlers and Kafka consumers in the `order-service` are annotated with `@Retry(retryOn = OptimisticLockException.class)`. If two concurrent requests attempt to update the same order or saga row simultaneously, JPA throws an `OptimisticLockException` and the operation is retried automatically with jitter. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
 
@@ -135,6 +138,7 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 
 | Service | Port | Responsibility |
 |---------|------|----------------|
+| gateway | 8090 | API Gateway — single entry point, routes to downstream services, propagates Correlation ID |
 | order-service | 8080 | Saga orchestrator, order lifecycle, REST API |
 | payment-service | 8081 | Simulates payment processing |
 | inventory-service | 8082 | Simulates inventory availability check |
@@ -188,18 +192,18 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
 | Scenario | How |
 |----------|-----|
 | Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8082/inventory/mode?accept=false` then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8082/inventory/mode?accept=true` |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` |
 
 ---
 
 ## API Reference
 
-All endpoints served by **order-service** at `http://localhost:8080`.
+All endpoints are served by the **API Gateway** at `http://localhost:8090/api`.
 
-Swagger UI available at `http://localhost:8080/q/swagger-ui` in dev mode.
+Swagger UI available at `http://localhost:8090/q/swagger-ui` in dev mode.
 
-### POST /orders
+### POST /api/orders
 Place a new order. Starts the saga asynchronously.
 
 **Request**
@@ -219,10 +223,10 @@ Place a new order. Starts the saga asynchronously.
 Location: /orders/{orderId}
 ```
 
-### GET /orders
+### GET /api/orders
 Returns all orders.
 
-### GET /orders/{id}
+### GET /api/orders/{id}
 Returns a single order.
 
 **Response** `200 OK`
@@ -239,10 +243,10 @@ Returns a single order.
 
 **Order statuses:** `PENDING` → `PAID` → `COMPLETED` / `CANCELLED`
 
-### PUT /orders/{id}/cancel
+### PUT /api/orders/{id}/cancel
 Manually cancel an order.
 
-**Response** `204 No Content`
+**Response** `200 OK` — returns the updated order with `status: CANCELLED`
 
 ---
 
@@ -294,16 +298,16 @@ graph LR
     F --> D
 ```
 
-Images pushed: `tbzowka/{order-service,payment-service,inventory-service,frontend}:latest`
+Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway,frontend}:latest`
 
 ---
 
 ## Roadmap
 
-- [ ] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Zookeeper, Apicurio, PostgreSQL
-- [ ] **API Gateway** — Quarkus reverse proxy, single entry point for the Angular app
+- [x] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Apicurio, PostgreSQL
+- [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
+- [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
 - [ ] **Authentication** — Keycloak OIDC, JWT propagation through all services
 - [ ] **Angular Frontend** — product listing, shopping cart, checkout, real-time order status via SSE
-- [ ] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
 - [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification

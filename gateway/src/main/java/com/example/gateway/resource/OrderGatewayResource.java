@@ -2,7 +2,6 @@ package com.example.gateway.resource;
 
 import com.example.gateway.client.OrderServiceClient;
 import jakarta.inject.Inject;
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -26,7 +25,7 @@ public class OrderGatewayResource {
     OrderServiceClient orderServiceClient;
 
     @POST
-    public Response create(JsonObject body) {
+    public Response create(String body) {
         return orderServiceClient.create(body);
     }
 

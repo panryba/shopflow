@@ -1,6 +1,7 @@
 package com.example.gateway.infrastructure.filter;
 
 import com.example.gateway.infrastructure.observability.CorrelationIdProvider;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -29,14 +30,16 @@ public class CorrelationIdFilter implements ContainerRequestFilter, ContainerRes
             id = UUID.randomUUID().toString();
         }
         correlationIdProvider.set(id);
+        Log.infof("%s %s", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath());
     }
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
         String id = correlationIdProvider.get();
         if (id != null) {
-            responseContext.getHeaders().add(HEADER, id);
+            responseContext.getHeaders().putSingle(HEADER, id);
         }
+        Log.infof("%s %s → %d", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath(), responseContext.getStatus());
         correlationIdProvider.clear();
     }
 }

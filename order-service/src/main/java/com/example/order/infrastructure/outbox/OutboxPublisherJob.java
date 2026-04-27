@@ -39,7 +39,8 @@ public class OutboxPublisherJob {
     @Scheduled(every = "5s")
     @Transactional
     public void publish() {
-        repository.findUnprocessed(batchSize, maxRetries).forEach(this::processPublish);
+        var pending = repository.findUnprocessed(batchSize, maxRetries);
+        pending.forEach(this::processPublish);
     }
 
     void processPublish(OutboxEventEntity event) {
@@ -47,6 +48,7 @@ public class OutboxPublisherJob {
             route(event);
             event.setProcessed(true);
             event.setProcessedAt(Instant.now());
+            Log.infof("Outbox sent type=%s aggregateId=%s", event.getEventType(), event.getAggregateId());
         } catch (Exception e) {
             event.setRetryCount(event.getRetryCount() + 1);
             event.setLastError(e.getMessage());

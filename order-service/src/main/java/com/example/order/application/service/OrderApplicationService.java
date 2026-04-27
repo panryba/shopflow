@@ -8,6 +8,7 @@ import com.example.order.domain.valueobject.OrderId;
 import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 
 @ApplicationScoped
@@ -36,6 +37,7 @@ public class OrderApplicationService implements OrderUseCase {
     }
 
     @Override
+    @Transactional
     public void cancel(OrderId orderId) {
         Order order = repository.findById(orderId).orElseThrow();
         order.cancel();

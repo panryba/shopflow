@@ -21,7 +21,7 @@ jobs:
           cache: maven
 
       - name: Make Maven wrappers executable
-        run: chmod +x order-service/mvnw payment-service/mvnw inventory-service/mvnw
+        run: chmod +x order-service/mvnw payment-service/mvnw inventory-service/mvnw gateway/mvnw
 
       - name: Build order-service
         run: cd order-service && ./mvnw package -DskipTests
@@ -31,6 +31,9 @@ jobs:
 
       - name: Build inventory-service
         run: cd inventory-service && ./mvnw package -DskipTests
+
+      - name: Build gateway
+        run: cd gateway && ./mvnw package -DskipTests
 
       - name: Test order-service
         run: |
@@ -56,6 +59,14 @@ jobs:
             echo "No tests found, skipping"
           fi
 
+      - name: Test gateway
+        run: |
+          if find gateway/src/test -name "*.java" | grep -q .; then
+            cd gateway && ./mvnw verify -DskipCompile
+          else
+            echo "No tests found, skipping"
+          fi
+
       - name: Upload order-service artifact
         uses: actions/upload-artifact@v4
         with:
@@ -73,6 +84,12 @@ jobs:
         with:
           name: inventory-service
           path: inventory-service/target/quarkus-app/
+
+      - name: Upload gateway artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway
+          path: gateway/target/quarkus-app/
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -125,6 +142,12 @@ jobs:
           name: inventory-service
           path: inventory-service/target/quarkus-app/
 
+      - name: Download gateway artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gateway
+          path: gateway/target/quarkus-app/
+
       - name: Set up Node 24
         uses: actions/setup-node@v4
         with:
@@ -170,6 +193,16 @@ jobs:
           tags: |
             tbzowka/inventory-service:latest
             tbzowka/inventory-service:${{ github.sha }}
+
+      - name: Build and push gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: gateway
+          file: gateway/src/main/docker/Dockerfile.jvm
+          push: true
+          tags: |
+            tbzowka/gateway:latest
+            tbzowka/gateway:${{ github.sha }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6

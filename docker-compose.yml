@@ -87,6 +87,16 @@ services:
       apicurio-registry:
         condition: service_healthy
 
+  gateway:
+    image: tbzowka/gateway:latest
+    build:
+      context: gateway
+      dockerfile: src/main/docker/Dockerfile.jvm
+    ports:
+      - "8090:8090"
+    depends_on:
+      - order-service
+
   frontend:
     image: tbzowka/frontend:latest
     build:
@@ -95,7 +105,7 @@ services:
     ports:
       - "4200:80"
     depends_on:
-      - order-service
+      - gateway
 
 volumes:
   postgres-data:

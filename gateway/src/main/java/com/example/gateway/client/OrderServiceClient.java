@@ -1,6 +1,7 @@
 package com.example.gateway.client;
 
 import com.example.gateway.infrastructure.filter.OutgoingCorrelationIdFilter;
+import com.example.gateway.infrastructure.filter.OutgoingJwtFilter;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @RegisterRestClient(configKey = "com.example.gateway.client.OrderServiceClient")
 @RegisterProvider(OutgoingCorrelationIdFilter.class)
+@RegisterProvider(OutgoingJwtFilter.class)
 @Path("/orders")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

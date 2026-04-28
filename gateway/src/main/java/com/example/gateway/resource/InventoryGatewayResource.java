@@ -1,6 +1,7 @@
 package com.example.gateway.resource;
 
 import com.example.gateway.client.InventoryServiceClient;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -20,6 +21,7 @@ public class InventoryGatewayResource {
 
     @PUT
     @Path("/mode")
+    @RolesAllowed("admin")
     public Response setMode(@QueryParam("accept") boolean accept) {
         return inventoryServiceClient.setMode(accept);
     }

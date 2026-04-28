@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, and **API Gateway**.
+A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **API Gateway**, and **JWT Authentication**.
 
 ---
 
@@ -20,6 +20,7 @@ docker compose up
 |----------|-----|
 | API Gateway | http://localhost:8090 |
 | Gateway Swagger UI | http://localhost:8090/q/swagger-ui |
+| Keycloak Admin | http://localhost:8180/admin (admin / admin) |
 | Frontend | http://localhost:4200 |
 
 ---
@@ -74,8 +75,6 @@ graph TB
     K <-->|Avro schema lookup| SR
 ```
 
-> Keycloak (Auth) is planned — see [Roadmap](#roadmap).
-
 ---
 
 ## Patterns Implemented
@@ -120,6 +119,9 @@ All REST handlers and Kafka consumers in the `order-service` are annotated with 
 
 ### API Gateway
 A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Unreachable downstream services map to a `502 Bad Gateway` response; 4xx errors from downstream pass through unchanged.
+
+### JWT Authentication
+JWT validation is enforced at the gateway only — one enforcement point, no token validation duplicated across services. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON. The raw `Authorization: Bearer <token>` header is forwarded downstream via a `ClientRequestFilter` (`OutgoingJwtFilter`) so services can extract user identity in the future without re-validating the token. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires role `admin`.
 
 ---
 
@@ -189,17 +191,33 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
 
 ### Simulating Failures
 
+All endpoints require a valid JWT. Obtain a token first:
+
+```bash
+# customer1 token (role: user) — for order endpoints
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=shopflow-app&username=customer1&password=password" \
+  | jq -r .access_token)
+
+# admin token (role: admin) — required for inventory mode toggle
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=shopflow-app&username=admin&password=password" \
+  | jq -r .access_token)
+```
+
 | Scenario | How |
 |----------|-----|
 | Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false`<br/>then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` (admin token required)<br/>then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` (admin token required) |
 
 ---
 
 ## API Reference
 
 All endpoints are served by the **API Gateway** at `http://localhost:8090/api`.
+
+All endpoints require a `Bearer` token in the `Authorization` header. Order endpoints require role `user` or `admin`; inventory mode toggle requires role `admin`.
 
 Swagger UI available at `http://localhost:8090/q/swagger-ui` in dev mode.
 
@@ -276,6 +294,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Serialization | Apache Avro, Apicurio Schema Registry |
 | Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
 | Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
+| Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |
 | API | JAX-RS, OpenAPI / Swagger UI |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
 
@@ -307,7 +326,7 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 - [x] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Apicurio, PostgreSQL
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
-- [ ] **Authentication** — Keycloak OIDC, JWT propagation through all services
+- [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [ ] **Angular Frontend** — product listing, shopping cart, checkout, real-time order status via SSE
 - [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification

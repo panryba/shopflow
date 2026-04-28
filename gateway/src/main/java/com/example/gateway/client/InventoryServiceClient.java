@@ -1,6 +1,7 @@
 package com.example.gateway.client;
 
 import com.example.gateway.infrastructure.filter.OutgoingCorrelationIdFilter;
+import com.example.gateway.infrastructure.filter.OutgoingJwtFilter;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -12,6 +13,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @RegisterRestClient(configKey = "com.example.gateway.client.InventoryServiceClient")
 @RegisterProvider(OutgoingCorrelationIdFilter.class)
+@RegisterProvider(OutgoingJwtFilter.class)
 @Path("/inventory")
 @Produces(MediaType.TEXT_PLAIN)
 public interface InventoryServiceClient {

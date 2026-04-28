@@ -1,6 +1,7 @@
 package com.example.gateway.resource;
 
 import com.example.gateway.client.OrderServiceClient;
+import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -15,6 +16,7 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.util.UUID;
 
+@Authenticated
 @Path("/api/orders")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

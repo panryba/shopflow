@@ -2,6 +2,8 @@ package com.example.gateway.resource;
 
 import com.example.gateway.infrastructure.observability.CorrelationIdProvider;
 import io.quarkus.logging.Log;
+import io.quarkus.security.ForbiddenException;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
@@ -18,6 +20,20 @@ public class GatewayExceptionMapper implements ExceptionMapper<Exception> {
     @Override
     public Response toResponse(Exception exception) {
         String correlationId = correlationIdProvider.get();
+
+        if (exception instanceof UnauthorizedException) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(new GatewayErrorResponse(401, "UNAUTHORIZED",
+                            "Authentication required", correlationId))
+                    .build();
+        }
+
+        if (exception instanceof ForbiddenException) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(new GatewayErrorResponse(403, "FORBIDDEN",
+                            "Insufficient permissions", correlationId))
+                    .build();
+        }
 
         if (exception instanceof WebApplicationException wae) {
             Response downstream = wae.getResponse();

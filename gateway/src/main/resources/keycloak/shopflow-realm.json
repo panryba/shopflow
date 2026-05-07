@@ -1,0 +1,46 @@
+{
+  "realm": "shopflow",
+  "enabled": true,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "shopflow-app",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Regular customer" },
+      { "name": "admin", "description": "Administrator" }
+    ]
+  },
+  "users": [
+    {
+      "username": "customer1",
+      "enabled": true,
+      "email": "customer1@shopflow.dev",
+      "firstName": "Alice",
+      "lastName": "Customer",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@shopflow.dev",
+      "firstName": "Bob",
+      "lastName": "Admin",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ],
+      "realmRoles": ["admin"]
+    }
+  ]
+}

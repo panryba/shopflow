@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
@@ -67,33 +67,15 @@ jobs:
             echo "No tests found, skipping"
           fi
 
-      - name: Upload order-service artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache compiled artifacts
+        uses: actions/cache/save@v4
         with:
-          name: order-service
-          path: order-service/target/quarkus-app/
-          retention-days: 1
-
-      - name: Upload payment-service artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: payment-service
-          path: payment-service/target/quarkus-app/
-          retention-days: 1
-
-      - name: Upload inventory-service artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: inventory-service
-          path: inventory-service/target/quarkus-app/
-          retention-days: 1
-
-      - name: Upload gateway artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gateway
-          path: gateway/target/quarkus-app/
-          retention-days: 1
+          path: |
+            order-service/target/quarkus-app/
+            payment-service/target/quarkus-app/
+            inventory-service/target/quarkus-app/
+            gateway/target/quarkus-app/
+          key: compiled-${{ github.sha }}
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -128,29 +110,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download order-service artifact
-        uses: actions/download-artifact@v4
+      - name: Restore compiled artifacts
+        uses: actions/cache/restore@v4
         with:
-          name: order-service
-          path: order-service/target/quarkus-app/
-
-      - name: Download payment-service artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: payment-service
-          path: payment-service/target/quarkus-app/
-
-      - name: Download inventory-service artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: inventory-service
-          path: inventory-service/target/quarkus-app/
-
-      - name: Download gateway artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: gateway
-          path: gateway/target/quarkus-app/
+          path: |
+            order-service/target/quarkus-app/
+            payment-service/target/quarkus-app/
+            inventory-service/target/quarkus-app/
+            gateway/target/quarkus-app/
+          key: compiled-${{ github.sha }}
 
       - name: Set up Node 24
         uses: actions/setup-node@v4

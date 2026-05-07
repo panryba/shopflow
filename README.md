@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
 A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **Idempotent Order Creation**, **API Gateway**, **Fault Tolerance**, and **JWT Authentication**.
 
@@ -305,7 +305,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Frontend | Angular 21, nginx |
 | Messaging | Apache Kafka, SmallRye Reactive Messaging |
 | Serialization | Apache Avro, Apicurio Schema Registry |
-| Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
+| Database | PostgreSQL 17, Hibernate ORM Panache, Flyway |
 | Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |
 | API | JAX-RS, OpenAPI / Swagger UI |

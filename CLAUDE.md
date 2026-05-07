@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**ShopFlow – Microservices Platform** — an online shop portfolio project demonstrating senior-level distributed systems patterns. Built with Quarkus 3, Java 21, Kafka, Avro, and PostgreSQL.
+**ShopFlow – Microservices Platform** — an online shop portfolio project demonstrating senior-level distributed systems patterns. Built with Quarkus 3.33, Java 25, Kafka, Avro, and PostgreSQL.
 
 Planned additions (not yet built): Docker Compose, API Gateway (Quarkus), Keycloak + JWT auth, Angular frontend, GitHub Actions CI/CD, Prometheus + Grafana observability.
 

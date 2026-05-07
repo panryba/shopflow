@@ -15,19 +15,20 @@ import java.time.Instant;
 public class InboxEvent {
 
     @Id
+    @Column(name = "event_id")
     private String eventId;
 
-    @Column(nullable = false)
+    @Column(name = "event_type", nullable = false)
     private String eventType;
 
-    @Column(nullable = false)
+    @Column(name = "received_at", nullable = false)
     private Instant receivedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
 
-    @Column
+    @Column(name = "error_message")
     private String errorMessage;
 
     public enum Status {

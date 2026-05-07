@@ -18,6 +18,7 @@ public class OrderItemEntity {
     @Id
     private UUID id;
 
+    @Column(name = "product_id")
     private UUID productId;
 
     private int quantity;

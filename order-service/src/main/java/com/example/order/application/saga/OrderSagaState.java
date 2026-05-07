@@ -26,7 +26,7 @@ public class OrderSagaState {
     @Column(nullable = false)
     private Instant deadline;
 
-    @Column(nullable = false)
+    @Column(name = "correlation_id", nullable = false)
     private String correlationId;
 
     @UpdateTimestamp

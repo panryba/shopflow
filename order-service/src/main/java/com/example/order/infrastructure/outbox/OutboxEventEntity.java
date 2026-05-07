@@ -23,6 +23,7 @@ public class OutboxEventEntity {
     @Column(name = "AGGREGATE_ID")
     private String aggregateId;
 
+    @Column(name = "aggregate_type")
     private String aggregateType;
 
     @Enumerated(EnumType.STRING)

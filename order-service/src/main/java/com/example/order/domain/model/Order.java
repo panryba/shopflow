@@ -15,17 +15,23 @@ public class Order {
     private OrderId id;
     private List<OrderItem> items = new ArrayList<>();
     private OrderStatus status;
+    private UUID idempotencyKey;
 
     public Order(OrderId id) {
         this.id = id;
         this.status = OrderStatus.PENDING;
     }
 
-    public static Order reconstitute(OrderId id, List<OrderItem> items, OrderStatus status) {
+    public static Order reconstitute(OrderId id, List<OrderItem> items, OrderStatus status, UUID idempotencyKey) {
         Order order = new Order(id);
         order.items = new ArrayList<>(items);
         order.status = status;
+        order.idempotencyKey = idempotencyKey;
         return order;
+    }
+
+    public void setIdempotencyKey(UUID idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public void addItem(UUID productId, int quantity, BigDecimal price) {

@@ -26,6 +26,9 @@ public class OrderEntity {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
+    @Column(name = "idempotency_key")
+    private UUID idempotencyKey;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,

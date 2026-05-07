@@ -8,6 +8,7 @@ import com.example.order.infrastructure.persistence.mapper.OrderMapper;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 
 import java.util.List;
@@ -33,6 +34,12 @@ public class PanacheOrderRepository implements OrderRepository, PanacheRepositor
     @Override
     public List<Order> findAllOrders() {
         return listAll().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public Optional<Order> findByIdempotencyKey(UUID idempotencyKey) {
+        return find("idempotencyKey", idempotencyKey).firstResultOptional().map(mapper::toDomain);
     }
 
     @Override

@@ -40,13 +40,17 @@ public class OrderResource {
 
     @POST
     @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
-    public Response create(@Valid CreateOrderRequest request) {
+    public Response create(@Valid CreateOrderRequest request,
+                           @HeaderParam("Idempotency-Key") UUID idempotencyKey) {
         UUID customerId = UUID.fromString(jwt.getSubject());
-        UUID orderId = orchestrator.start(request, customerId);
+        UUID orderId = orchestrator.start(request, customerId, idempotencyKey);
         Log.infof("Order accepted orderId=%s customerId=%s", orderId, customerId);
-        return Response.accepted()
-                .header("Location", "/orders/" + orderId)
-                .build();
+        Response.ResponseBuilder builder = Response.accepted()
+                .header("Location", "/orders/" + orderId);
+        if (idempotencyKey != null) {
+            builder.header("Idempotency-Key", idempotencyKey);
+        }
+        return builder.build();
     }
 
     @PUT

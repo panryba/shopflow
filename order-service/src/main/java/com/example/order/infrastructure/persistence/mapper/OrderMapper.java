@@ -19,6 +19,7 @@ public class OrderMapper {
     public OrderEntity toEntity(Order order, OrderEntity entity) {
         entity.setId(order.getId().value());
         entity.setStatus(order.getStatus());
+        entity.setIdempotencyKey(order.getIdempotencyKey());
 
         Map<UUID, OrderItemEntity> existing = entity.getItems().stream()
                 .collect(Collectors.toMap(OrderItemEntity::getId, item -> item));
@@ -51,6 +52,6 @@ public class OrderMapper {
                 ))
                 .toList();
 
-        return Order.reconstitute(new OrderId(entity.getId()), items, entity.getStatus());
+        return Order.reconstitute(new OrderId(entity.getId()), items, entity.getStatus(), entity.getIdempotencyKey());
     }
 }

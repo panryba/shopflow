@@ -1,6 +1,7 @@
 package com.example.order.application.saga;
 
 import com.example.order.application.port.input.OrderUseCase;
+import com.example.order.application.port.output.OrderRepository;
 import com.example.order.domain.event.InventoryApprovedEvent;
 import com.example.order.domain.event.InventoryRejectedEvent;
 import com.example.order.domain.event.InventoryRequestEvent;
@@ -20,7 +21,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import jakarta.persistence.PersistenceException;
+
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -28,38 +32,70 @@ public class OrderSagaOrchestrator {
 
     @Inject OutboxService outbox;
     @Inject OrderUseCase service;
+    @Inject OrderRepository orderRepository;
     @Inject CorrelationIdProvider correlationIdProvider;
     @Inject OrderSagaRepository sagaRepository;
     @Inject InboxService inbox;
 
     @Transactional
-    public UUID start(CreateOrderRequest request, UUID customerId) {
-        String correlationId = getCorrelationId();
+    public UUID start(CreateOrderRequest request, UUID customerId, UUID idempotencyKey) {
+        if (idempotencyKey != null) {
+            Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                Log.infof("Duplicate request detected idempotencyKey=%s orderId=%s", idempotencyKey, existing.get().getId().value());
+                return existing.get().getId().value();
+            }
+        }
 
-        Order order = new Order(new OrderId(UUID.randomUUID()));
-        request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
-        var total = order.totalAmount(); // validates non-empty before any DB write
+        try {
+            String correlationId = getCorrelationId();
 
-        service.create(order);
+            Order order = new Order(new OrderId(UUID.randomUUID()));
+            order.setIdempotencyKey(idempotencyKey);
+            request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
+            var total = order.totalAmount();
 
-        sagaRepository.save(
-                OrderSagaState.builder()
-                        .orderId(order.getId().value())
-                        .step(OrderSagaState.SagaStep.WAITING_PAYMENT)
-                        .deadline(Instant.now().plusSeconds(30))
-                        .correlationId(correlationId)
-                        .build()
-        );
+            service.create(order);
 
-        outbox.save(
-                Order.class.getSimpleName(),
-                order.getId().value().toString(),
-                OutboxEventType.PAYMENT_REQUEST,
-                PaymentRequestEvent.of(order.getId().value(), customerId, total.amount(), correlationId)
-        );
+            sagaRepository.save(
+                    OrderSagaState.builder()
+                            .orderId(order.getId().value())
+                            .step(OrderSagaState.SagaStep.WAITING_PAYMENT)
+                            .deadline(Instant.now().plusSeconds(30))
+                            .correlationId(correlationId)
+                            .build()
+            );
 
-        Log.infof("Saga started orderId=%s step=WAITING_PAYMENT total=%s", order.getId().value(), total.amount());
-        return order.getId().value();
+            outbox.save(
+                    Order.class.getSimpleName(),
+                    order.getId().value().toString(),
+                    OutboxEventType.PAYMENT_REQUEST,
+                    PaymentRequestEvent.of(order.getId().value(), customerId, total.amount(), correlationId)
+            );
+
+            Log.infof("Saga started orderId=%s step=WAITING_PAYMENT total=%s", order.getId().value(), total.amount());
+            return order.getId().value();
+
+        } catch (PersistenceException e) {
+            if (isUniqueConstraintViolation(e) && idempotencyKey != null) {
+                Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+                if (existing.isPresent()) {
+                    Log.infof("Race condition resolved idempotencyKey=%s orderId=%s", idempotencyKey, existing.get().getId().value());
+                    return existing.get().getId().value();
+                }
+            }
+            throw e;
+        }
+    }
+
+    private boolean isUniqueConstraintViolation(Throwable t) {
+        while (t != null) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     @Transactional

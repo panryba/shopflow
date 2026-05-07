@@ -239,12 +239,13 @@ Place a new order. Starts the saga asynchronously.
 **Request**
 ```json
 {
-  "customerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "items": [
     { "productId": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "quantity": 2, "price": 74.99 }
   ]
 }
 ```
+
+> `customerId` is not accepted from the client — it is extracted from the `sub` claim of the forwarded JWT token.
 
 > `price` per item is accepted from the client as a pragmatic simplification — in a production system it would be fetched from a product catalog service and never trusted from the client.
 

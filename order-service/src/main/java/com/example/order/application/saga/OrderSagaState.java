@@ -17,6 +17,7 @@ import java.util.UUID;
 public class OrderSagaState {
 
     @Id
+    @Column(name = "order_id")
     private UUID orderId;
 
     @Enumerated(EnumType.STRING)

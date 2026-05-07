@@ -114,6 +114,8 @@ services:
     depends_on:
       order-service:
         condition: service_started
+      inventory-service:
+        condition: service_started
       keycloak:
         condition: service_healthy
 

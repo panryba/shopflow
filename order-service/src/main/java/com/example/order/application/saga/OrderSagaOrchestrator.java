@@ -33,7 +33,7 @@ public class OrderSagaOrchestrator {
     @Inject InboxService inbox;
 
     @Transactional
-    public UUID start(CreateOrderRequest request) {
+    public UUID start(CreateOrderRequest request, UUID customerId) {
         String correlationId = getCorrelationId();
 
         Order order = new Order(new OrderId(UUID.randomUUID()));
@@ -55,7 +55,7 @@ public class OrderSagaOrchestrator {
                 Order.class.getSimpleName(),
                 order.getId().value().toString(),
                 OutboxEventType.PAYMENT_REQUEST,
-                PaymentRequestEvent.of(order.getId().value(), request.customerId(), total.amount(), correlationId)
+                PaymentRequestEvent.of(order.getId().value(), customerId, total.amount(), correlationId)
         );
 
         Log.infof("Saga started orderId=%s step=WAITING_PAYMENT total=%s", order.getId().value(), total.amount());

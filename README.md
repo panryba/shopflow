@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blue) ![Kafka](https://img.shields.io/badge/Kafka-Avro-red) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **API Gateway**, and **JWT Authentication**.
+A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **API Gateway**, **Fault Tolerance**, and **JWT Authentication**.
 
 ---
 
@@ -56,9 +56,11 @@ graph TB
         ODB[(Order DB<br/>PostgreSQL)]
     end
 
+    UI <-->|OIDC login| KC
     UI -->|HTTPS + JWT| GW
     GW -->|validate token| KC
     GW -->|route| OS
+    GW -->|route| IS
 
     OS <--> ODB
     OS -->|payment-request<br/>payment-rollback| K
@@ -66,10 +68,10 @@ graph TB
     K -->|payment-completed<br/>payment-failed| OS
     K -->|inventory-approved<br/>inventory-rejected| OS
 
-    PS -->|consume payment-request<br/>payment-rollback| K
+    K -->|payment-request<br/>payment-rollback| PS
     PS -->|payment-completed<br/>payment-failed| K
 
-    IS -->|consume inventory-request| K
+    K -->|inventory-request| IS
     IS -->|inventory-approved<br/>inventory-rejected| K
 
     K <-->|Avro schema lookup| SR
@@ -112,16 +114,23 @@ All Kafka messages are serialized with Apache Avro against schemas registered in
 Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions.
 
 ### Correlation ID Tracing
-Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order's full journey across all three services in aggregated logs.
+Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events.
 
 ### Concurrency Control
 All REST handlers and Kafka consumers in the `order-service` are annotated with `@Retry(retryOn = OptimisticLockException.class)`. If two concurrent requests attempt to update the same order or saga row simultaneously, JPA throws an `OptimisticLockException` and the operation is retried automatically with jitter. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
 
 ### API Gateway
-A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Unreachable downstream services map to a `502 Bad Gateway` response; 4xx errors from downstream pass through unchanged.
+A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Downstream responses are rebuilt before returning to the client — hop-by-hop headers (`transfer-encoding`, `content-length`, `host`, `connection`) are stripped to prevent HTTP framing conflicts. Unreachable downstream services map to `502 Bad Gateway`; open circuit returns `503 Service Unavailable`; 4xx errors from downstream pass through with their original status code.
+
+### Fault Tolerance
+All gateway-to-downstream calls are protected by MicroProfile Fault Tolerance. Read and idempotent write operations use `@Retry(maxRetries = 3, delay = 200ms)` — retries abort immediately on `WebApplicationException` so 4xx responses are never retried. POST (create order) gets no retry as the operation is not idempotent. All operations are protected by `@CircuitBreaker(requestVolumeThreshold = 10, failureRatio = 0.5, delay = 5s, successThreshold = 2)` — after 50% failures across 10 requests the circuit opens for 5 seconds; once open, requests fail fast with `503 SERVICE_UNAVAILABLE` and a structured `GatewayErrorResponse` without hitting the downstream service. REST clients are configured with a 1s connect timeout and 3s read timeout to bound worst-case latency on the local/Docker network.
 
 ### JWT Authentication
-JWT validation is enforced at the gateway only — one enforcement point, no token validation duplicated across services. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON. The raw `Authorization: Bearer <token>` header is forwarded downstream via a `ClientRequestFilter` (`OutgoingJwtFilter`) so services can extract user identity in the future without re-validating the token. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires role `admin`.
+JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
+
+The raw `Authorization: Bearer <token>` header is forwarded downstream via a `ClientRequestFilter` (`OutgoingJwtFilter`) so services can read user identity without performing OIDC validation against Keycloak again. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires role `admin`. The `order-service` extracts customer identity directly from the forwarded token — `customerId` is never trusted from the request body.
+
+In the current Keycloak configuration, the `sub` claim is a UUID and is used as the authoritative customer identity for every order.
 
 ---
 
@@ -324,9 +333,9 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 ## Roadmap
 
 - [x] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Apicurio, PostgreSQL
-- [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
+- [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [ ] **Angular Frontend** — product listing, shopping cart, checkout, real-time order status via SSE
-- [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification
+- [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput

@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Authenticated
@@ -22,29 +23,57 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 public class OrderGatewayResource {
 
+    private static final Set<String> BLOCKED_HEADERS = Set.of(
+            "transfer-encoding",
+            "content-length",
+            "host",
+            "connection",
+            "x-correlation-id"
+    );
+
     @Inject
     @RestClient
     OrderServiceClient orderServiceClient;
 
     @POST
     public Response create(String body) {
-        return orderServiceClient.create(body);
+        return forward(orderServiceClient.create(body));
     }
 
     @GET
     public Response getAll() {
-        return orderServiceClient.getAll();
+        return forward(orderServiceClient.getAll());
     }
 
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") UUID id) {
-        return orderServiceClient.getById(id);
+        return forward(orderServiceClient.getById(id));
     }
 
     @PUT
     @Path("/{id}/cancel")
     public Response cancel(@PathParam("id") UUID id) {
-        return orderServiceClient.cancel(id);
+        return forward(orderServiceClient.cancel(id));
+    }
+
+    private Response forward(Response downstream) {
+        String body = downstream.hasEntity()
+                ? downstream.readEntity(String.class)
+                : null;
+
+        Response.ResponseBuilder builder = Response.status(downstream.getStatus());
+
+        if (body != null) {
+            builder.entity(body);
+        }
+
+        downstream.getHeaders().forEach((k, values) -> {
+            if (!BLOCKED_HEADERS.contains(k.toLowerCase())) {
+                values.forEach(v -> builder.header(k, v));
+            }
+        });
+
+        return builder.build();
     }
 }

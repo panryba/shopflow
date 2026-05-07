@@ -8,10 +8,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-@RegisterRestClient(configKey = "com.example.gateway.client.InventoryServiceClient")
+@RegisterRestClient(configKey = "inventory-service")
 @RegisterProvider(OutgoingCorrelationIdFilter.class)
 @RegisterProvider(OutgoingJwtFilter.class)
 @Path("/inventory")
@@ -20,5 +22,7 @@ public interface InventoryServiceClient {
 
     @PUT
     @Path("/mode")
+    @Retry(maxRetries = 3, delay = 200)
+    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response setMode(@QueryParam("accept") boolean accept);
 }

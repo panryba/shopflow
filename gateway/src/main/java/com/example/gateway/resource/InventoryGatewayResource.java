@@ -11,9 +11,19 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.util.Set;
+
 @Path("/api/inventory")
 @Produces(MediaType.TEXT_PLAIN)
 public class InventoryGatewayResource {
+
+    private static final Set<String> BLOCKED_HEADERS = Set.of(
+            "transfer-encoding",
+            "content-length",
+            "host",
+            "connection",
+            "x-correlation-id"
+    );
 
     @Inject
     @RestClient
@@ -23,6 +33,26 @@ public class InventoryGatewayResource {
     @Path("/mode")
     @RolesAllowed("admin")
     public Response setMode(@QueryParam("accept") boolean accept) {
-        return inventoryServiceClient.setMode(accept);
+        return forward(inventoryServiceClient.setMode(accept));
+    }
+
+    private Response forward(Response downstream) {
+        String body = downstream.hasEntity()
+                ? downstream.readEntity(String.class)
+                : null;
+
+        Response.ResponseBuilder builder = Response.status(downstream.getStatus());
+
+        if (body != null) {
+            builder.entity(body);
+        }
+
+        downstream.getHeaders().forEach((k, values) -> {
+            if (!BLOCKED_HEADERS.contains(k.toLowerCase())) {
+                values.forEach(v -> builder.header(k, v));
+            }
+        });
+
+        return builder.build();
     }
 }

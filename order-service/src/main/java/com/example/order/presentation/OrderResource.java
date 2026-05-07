@@ -16,6 +16,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,11 +35,15 @@ public class OrderResource {
     @Inject
     OrderPresentationMapper mapper;
 
+    @Inject
+    JsonWebToken jwt;
+
     @POST
     @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
     public Response create(@Valid CreateOrderRequest request) {
-        UUID orderId = orchestrator.start(request);
-        Log.infof("Order accepted orderId=%s", orderId);
+        UUID customerId = UUID.fromString(jwt.getSubject());
+        UUID orderId = orchestrator.start(request, customerId);
+        Log.infof("Order accepted orderId=%s customerId=%s", orderId, customerId);
         return Response.accepted()
                 .header("Location", "/orders/" + orderId)
                 .build();

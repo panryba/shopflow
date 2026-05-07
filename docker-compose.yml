@@ -52,6 +52,7 @@ services:
 
   order-service:
     image: tbzowka/order-service:latest
+    pull_policy: always
     build:
       context: order-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -67,6 +68,7 @@ services:
 
   payment-service:
     image: tbzowka/payment-service:latest
+    pull_policy: always
     build:
       context: payment-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -80,6 +82,7 @@ services:
 
   inventory-service:
     image: tbzowka/inventory-service:latest
+    pull_policy: always
     build:
       context: inventory-service
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -110,6 +113,7 @@ services:
 
   gateway:
     image: tbzowka/gateway:latest
+    pull_policy: always
     build:
       context: gateway
       dockerfile: src/main/docker/Dockerfile.jvm
@@ -125,6 +129,7 @@ services:
 
   frontend:
     image: tbzowka/frontend:latest
+    pull_policy: always
     build:
       context: frontend
       dockerfile: Dockerfile

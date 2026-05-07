@@ -102,7 +102,7 @@ services:
     volumes:
       - ./keycloak/shopflow-realm.json:/opt/keycloak/data/import/shopflow-realm.json
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/realms/shopflow/.well-known/openid-configuration || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080"]
       interval: 15s
       timeout: 5s
       retries: 15

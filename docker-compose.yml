@@ -24,7 +24,7 @@ services:
       start_period: 15s
 
   apicurio-registry:
-    image: quay.io/apicurio/apicurio-registry:3.1.7.Final
+    image: quay.io/apicurio/apicurio-registry:3.1.7
     ports:
       - "8091:8080"
     environment:

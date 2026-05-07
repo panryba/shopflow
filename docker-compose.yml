@@ -24,9 +24,11 @@ services:
       start_period: 15s
 
   apicurio-registry:
-    image: apicurio/apicurio-registry-mem:2.6.2.Final
+    image: quay.io/apicurio/apicurio-registry:3.1.7.Final
     ports:
       - "8091:8080"
+    environment:
+      QUARKUS_PROFILE: dev
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 10s

@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-Avro-black) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
 A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **Idempotent Order Creation**, **API Gateway**, **Fault Tolerance**, and **JWT Authentication**.
 
@@ -220,8 +220,8 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
 | Scenario | How |
 |----------|-----|
 | Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` (admin token required)<br/>then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` (admin token required) |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required)then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required) |
 
 ---
 
@@ -303,8 +303,8 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 |-------|-----------|
 | Runtime | Quarkus 3.33, Java 25 |
 | Frontend | Angular 21, nginx |
-| Messaging | Apache Kafka, SmallRye Reactive Messaging |
-| Serialization | Apache Avro, Apicurio Schema Registry |
+| Messaging | Apache Kafka 4.1.1, SmallRye Reactive Messaging |
+| Serialization | Apache Avro 1.12.1, Apicurio Schema Registry 3.1.7 |
 | Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
 | Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |

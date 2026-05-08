@@ -217,11 +217,11 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
   | jq -r .access_token)
 ```
 
-| Scenario | How |
-|----------|-----|
-| Payment failure | Place an order where total exceeds 1000 |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required)then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required) |
+| Scenario | How                                                                                                          |
+|----------|--------------------------------------------------------------------------------------------------------------|
+| Payment failure | Place an order where total exceeds 1000                                                                      |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required) then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required)                       |
 
 ---
 

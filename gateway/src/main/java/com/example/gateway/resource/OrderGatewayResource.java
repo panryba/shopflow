@@ -5,6 +5,7 @@ import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -36,8 +37,8 @@ public class OrderGatewayResource {
     OrderServiceClient orderServiceClient;
 
     @POST
-    public Response create(String body) {
-        return forward(orderServiceClient.create(body));
+    public Response create(String body, @HeaderParam("Idempotency-Key") String idempotencyKey) {
+        return forward(orderServiceClient.create(body, idempotencyKey));
     }
 
     @GET

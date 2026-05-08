@@ -4,6 +4,7 @@ import com.example.gateway.infrastructure.filter.OutgoingCorrelationIdFilter;
 import com.example.gateway.infrastructure.filter.OutgoingJwtFilter;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -29,7 +30,7 @@ public interface OrderServiceClient {
 
     @POST
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response create(String body);
+    Response create(String body, @HeaderParam("Idempotency-Key") String idempotencyKey);
 
     @GET
     @Retry(maxRetries = 3, delay = 200, abortOn = WebApplicationException.class)

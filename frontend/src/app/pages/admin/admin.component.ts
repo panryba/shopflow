@@ -24,10 +24,10 @@ export class AdminComponent implements OnInit {
 
   readonly delayOptions = [
     { label: '0s', value: 0 },
-    { label: '1s', value: 1 },
     { label: '2s', value: 2 },
-    { label: '3s', value: 3 },
-    { label: '5s', value: 5 },
+    { label: '4s', value: 4 },
+    { label: '6s', value: 6 },
+    { label: '8s', value: 8 },
   ];
 
   ngOnInit() {

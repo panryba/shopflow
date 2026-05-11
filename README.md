@@ -323,7 +323,7 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
-**Admin Panel** — inventory mode toggle (accept / reject all orders) and per-service saga step delay dropdowns (0 s / 1 s / 2 s / 3 s / 5 s). Setting a delay slows down the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo.
+**Admin Panel** — inventory mode toggle (accept / reject all orders) and per-service saga step delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s). Setting a delay slows down the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo.
 
 **UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Select, Tooltip).
 

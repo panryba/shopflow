@@ -290,8 +290,13 @@ Returns a single order.
 
 The `history` array records every status transition with a timestamp, enabling the saga timeline view in the frontend.
 
+### GET /api/orders/{id}/events
+SSE stream of status updates for a single order. The server pushes a plain-text status name (`PAID`, `INVENTORY_APPROVED`, etc.) on every saga transition and closes the stream when the saga completes. Requires the same ownership or admin role check as `GET /api/orders/{id}`.
+
+**Response** `200 OK` — `text/event-stream`
+
 ### PUT /api/orders/{id}/cancel
-Manually cancel an order.
+Manually cancel an order. If the order is in `WAITING_INVENTORY` state (payment already charged), the cancellation triggers a `payment-rollback` event and the saga completes asynchronously with `PAYMENT_ROLLED_BACK` as the final history entry. For orders still `WAITING_PAYMENT`, the cancellation is immediate with no compensation needed.
 
 **Response** `200 OK` — returns the updated order with `status: CANCELLED`
 
@@ -314,7 +319,7 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 
 **Order List** — paginated table with Order ID (truncated to 13 chars, full UUID on hover), customer username, status badge, creation date, item count, and total. All users see all their own orders; admins see all orders from all users.
 
-**Order Detail** — full saga timeline (one entry per status transition with icon, colour, and timestamp), items table with album artwork, and a "Live" indicator while the saga is still in progress. The detail page polls every 2 seconds until the order reaches a terminal state (`INVENTORY_APPROVED`, `PAYMENT_FAILED`, `INVENTORY_REJECTED`, `CANCELLED`).
+**Order Detail** — full saga timeline (one entry per status transition with icon, colour, and timestamp), items table with album artwork, and a "Live" indicator while the saga is still in progress. The detail page opens an SSE connection to `GET /api/orders/{id}/events` and re-fetches the order on every status push. The stream is closed by the server when the saga reaches a terminal state (`INVENTORY_APPROVED`, `PAYMENT_FAILED`, `CANCELLED`, `PAYMENT_ROLLED_BACK`). Because `EventSource` cannot set `Authorization` headers, the SSE connection is opened with the `fetch()` API using an `AbortController` for cleanup.
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 

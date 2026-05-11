@@ -2,6 +2,7 @@ package com.example.gateway.client;
 
 import com.example.gateway.infrastructure.filter.OutgoingCorrelationIdFilter;
 import com.example.gateway.infrastructure.filter.OutgoingJwtFilter;
+import io.smallrye.mutiny.Multi;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
@@ -17,6 +18,7 @@ import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
+import org.jboss.resteasy.reactive.RestSseElementType;
 
 import java.util.UUID;
 
@@ -48,4 +50,10 @@ public interface OrderServiceClient {
     @Retry(maxRetries = 3, delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response cancel(@PathParam("id") UUID id);
+
+    @GET
+    @Path("/{id}/events")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestSseElementType(MediaType.TEXT_PLAIN)
+    Multi<String> streamStatus(@PathParam("id") UUID id);
 }

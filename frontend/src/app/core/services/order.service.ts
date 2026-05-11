@@ -1,12 +1,13 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { interval, Observable } from 'rxjs';
-import { startWith, switchMap, takeWhile } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { CreateOrderRequest, OrderResponse, OrderStatus } from '../models/order.model';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class OrderService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
 
   getAll(): Observable<OrderResponse[]> {
     return this.http.get<OrderResponse[]>('/api/orders');
@@ -29,14 +30,58 @@ export class OrderService {
   }
 
   watchOrder(id: string): Observable<OrderResponse> {
-    const TERMINAL = new Set<string>([OrderStatus.INVENTORY_APPROVED, OrderStatus.PAYMENT_FAILED, OrderStatus.CANCELLED, 'PAYMENT_ROLLED_BACK']);
-    return interval(2000).pipe(
-      startWith(0),
-      switchMap(() => this.http.get<OrderResponse>(`/api/orders/${id}`)),
-      takeWhile(order => {
-        const last = order.history?.at(-1)?.status;
-        return !last || !TERMINAL.has(last);
-      }, true)
-    );
+    const TERMINAL = new Set<string>([
+      OrderStatus.INVENTORY_APPROVED, OrderStatus.PAYMENT_FAILED,
+      OrderStatus.CANCELLED, 'PAYMENT_ROLLED_BACK'
+    ]);
+
+    return new Observable<OrderResponse>(subscriber => {
+      let active = true;
+      const abort = new AbortController();
+
+      const fetchOrder = () => {
+        if (!active) return;
+        this.http.get<OrderResponse>(`/api/orders/${id}`).subscribe({
+          next: order => {
+            if (!active) return;
+            subscriber.next(order);
+            const last = order.history?.at(-1)?.status;
+            if (last && TERMINAL.has(last)) {
+              cleanup();
+              subscriber.complete();
+            }
+          },
+          error: err => { cleanup(); subscriber.error(err); }
+        });
+      };
+
+      const cleanup = () => {
+        active = false;
+        abort.abort();
+      };
+
+      fetchOrder();
+
+      const token = this.auth.token;
+      fetch(`/api/orders/${id}/events`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: abort.signal
+      }).then(async response => {
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        while (active) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (decoder.decode(value, { stream: true }).includes('data:')) fetchOrder();
+        }
+        // Stream closed by server (saga done) — fetch final state in case last event was buffered
+        if (active) fetchOrder();
+      }).catch(() => {
+        // Connection lost — fetch current state so we don't hang forever
+        if (active) fetchOrder();
+      });
+
+      return cleanup;
+    });
   }
 }

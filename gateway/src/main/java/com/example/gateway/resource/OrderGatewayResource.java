@@ -2,6 +2,7 @@ package com.example.gateway.resource;
 
 import com.example.gateway.client.OrderServiceClient;
 import io.quarkus.security.Authenticated;
+import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -14,6 +15,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.jboss.resteasy.reactive.RestSseElementType;
 
 import java.util.Set;
 import java.util.UUID;
@@ -56,6 +58,14 @@ public class OrderGatewayResource {
     @Path("/{id}/cancel")
     public Response cancel(@PathParam("id") UUID id) {
         return forward(orderServiceClient.cancel(id));
+    }
+
+    @GET
+    @Path("/{id}/events")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestSseElementType(MediaType.TEXT_PLAIN)
+    public Multi<String> streamStatus(@PathParam("id") UUID id) {
+        return orderServiceClient.streamStatus(id);
     }
 
     private Response forward(Response downstream) {

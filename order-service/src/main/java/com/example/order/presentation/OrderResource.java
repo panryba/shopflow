@@ -5,11 +5,14 @@ import com.example.order.application.saga.OrderSagaOrchestrator;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
 import com.example.order.infrastructure.history.OrderStatusHistoryService;
+import com.example.order.infrastructure.sse.OrderSseService;
 import com.example.order.presentation.dto.CreateOrderRequest;
 import com.example.order.presentation.dto.OrderResponse;
 import com.example.order.presentation.dto.StatusHistoryEntryResponse;
 import com.example.order.presentation.mapper.OrderPresentationMapper;
 import io.quarkus.logging.Log;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Multi;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.OptimisticLockException;
@@ -21,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.jboss.resteasy.reactive.RestSseElementType;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +45,9 @@ public class OrderResource {
 
     @Inject
     OrderStatusHistoryService historyService;
+
+    @Inject
+    OrderSseService sseService;
 
     @Inject
     JsonWebToken jwt;
@@ -75,7 +82,7 @@ public class OrderResource {
         if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(existing.getUserId())) {
             throw new ForbiddenException();
         }
-        service.cancel(new OrderId(id));
+        orchestrator.cancelByUser(new OrderId(id));
         Order order = service.findById(new OrderId(id));
         return Response.ok(mapper.toResponse(order)).build();
     }
@@ -104,5 +111,18 @@ public class OrderResource {
                 .map(h -> new StatusHistoryEntryResponse(h.getStatus().name(), h.getOccurredAt()))
                 .toList();
         return mapper.toResponse(order, history);
+    }
+
+    @GET
+    @Path("/{id}/events")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestSseElementType(MediaType.TEXT_PLAIN)
+    @Blocking
+    public Multi<String> streamStatus(@PathParam("id") UUID id) {
+        Order order = service.findById(new OrderId(id));
+        if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(order.getUserId())) {
+            throw new ForbiddenException();
+        }
+        return sseService.stream(id);
     }
 }

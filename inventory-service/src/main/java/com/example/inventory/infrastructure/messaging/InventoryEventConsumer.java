@@ -26,6 +26,10 @@ public class InventoryEventConsumer {
 
     private volatile boolean accepted = true;
 
+    public boolean isAccepted() {
+        return accepted;
+    }
+
     public void setAccepted(boolean accepted) {
         Log.infof("Inventory mode changed: accept=%s", accepted);
         this.accepted = accepted;

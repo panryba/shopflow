@@ -25,6 +25,9 @@ public class PaymentEventConsumer {
     @Channel("payment-failed")
     Emitter<com.example.order.events.avro.PaymentFailedEvent> failedEmitter;
 
+    @Channel("payment-rollback-completed")
+    Emitter<com.example.order.events.avro.PaymentRollbackCompletedEvent> rollbackCompletedEmitter;
+
     @Incoming("payment-request")
     public CompletionStage<Void> process(Message<com.example.order.events.avro.PaymentRequestEvent> message) {
         try {
@@ -62,7 +65,20 @@ public class PaymentEventConsumer {
     @Incoming("payment-rollback")
     public CompletionStage<Void> rollback(Message<com.example.order.events.avro.PaymentRollbackEvent> message) {
         try {
-            Log.infov("PAYMENT ROLLBACK id={0}", message.getPayload().getOrderId().toString());
+            var avro = message.getPayload();
+            String orderId = avro.getOrderId().toString();
+            String correlationId = avro.getCorrelationId().toString();
+
+            Log.infov("PAYMENT ROLLBACK id={0}", orderId);
+
+            rollbackCompletedEmitter.send(Message.of(
+                    com.example.order.events.avro.PaymentRollbackCompletedEvent.newBuilder()
+                            .setEventId(UUID.randomUUID().toString())
+                            .setOrderId(orderId)
+                            .setCorrelationId(correlationId)
+                            .build())
+                    .addMetadata(key(orderId, correlationId)));
+
             return message.ack();
         } catch (Exception e) {
             return message.nack(e);

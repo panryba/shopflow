@@ -206,9 +206,9 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
 All endpoints require a valid JWT. Obtain a token first:
 
 ```bash
-# customer1 token (role: user) — for order endpoints
+# user1 token (role: user) — for order endpoints
 TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
-  -d "grant_type=password&client_id=shopflow-app&username=customer1&password=password" \
+  -d "grant_type=password&client_id=shopflow-app&username=user1&password=password" \
   | jq -r .access_token)
 
 # admin token (role: admin) — required for inventory mode toggle
@@ -217,11 +217,11 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
   | jq -r .access_token)
 ```
 
-| Scenario | How                                                                                                          |
-|----------|--------------------------------------------------------------------------------------------------------------|
-| Payment failure | Place an order where total exceeds 1000                                                                      |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required) then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required)                       |
+| Scenario | How                                                                                                         |
+|----------|-------------------------------------------------------------------------------------------------------------|
+| Payment failure | Place an order where total exceeds 1000                                                                     |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required)<br/>then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required)                      |
 
 ---
 

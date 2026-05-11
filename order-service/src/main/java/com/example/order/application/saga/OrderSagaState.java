@@ -37,6 +37,7 @@ public class OrderSagaState {
     public enum SagaStep {
         WAITING_PAYMENT,
         WAITING_INVENTORY,
+        WAITING_ROLLBACK,
         COMPLETED,
         CANCELLED
     }

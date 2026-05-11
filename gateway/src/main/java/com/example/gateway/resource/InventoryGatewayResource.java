@@ -3,6 +3,7 @@ package com.example.gateway.resource;
 import com.example.gateway.client.InventoryServiceClient;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -28,6 +29,14 @@ public class InventoryGatewayResource {
     @Inject
     @RestClient
     InventoryServiceClient inventoryServiceClient;
+
+    @GET
+    @Path("/mode")
+    @RolesAllowed("admin")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMode() {
+        return forward(inventoryServiceClient.getMode());
+    }
 
     @PUT
     @Path("/mode")

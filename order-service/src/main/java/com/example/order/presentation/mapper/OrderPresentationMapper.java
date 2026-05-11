@@ -3,6 +3,7 @@ package com.example.order.presentation.mapper;
 import com.example.order.domain.model.Order;
 import com.example.order.presentation.dto.OrderItemResponse;
 import com.example.order.presentation.dto.OrderResponse;
+import com.example.order.presentation.dto.StatusHistoryEntryResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.math.BigDecimal;
@@ -12,6 +13,10 @@ import java.util.List;
 public class OrderPresentationMapper {
 
     public OrderResponse toResponse(Order order) {
+        return toResponse(order, List.of());
+    }
+
+    public OrderResponse toResponse(Order order, List<StatusHistoryEntryResponse> history) {
         List<OrderItemResponse> items = order.getItems().stream()
                 .map(i -> new OrderItemResponse(
                         i.productId(),
@@ -26,9 +31,12 @@ public class OrderPresentationMapper {
 
         return new OrderResponse(
                 order.getId().value(),
+                order.getUsername(),
                 order.getStatus(),
                 items,
-                total
+                total,
+                history,
+                order.getCreatedAt()
         );
     }
 }

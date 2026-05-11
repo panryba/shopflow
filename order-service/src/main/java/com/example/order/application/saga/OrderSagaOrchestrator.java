@@ -8,9 +8,12 @@ import com.example.order.domain.event.InventoryRequestEvent;
 import com.example.order.domain.event.PaymentCompletedEvent;
 import com.example.order.domain.event.PaymentFailedEvent;
 import com.example.order.domain.event.PaymentRequestEvent;
+import com.example.order.domain.event.PaymentRollbackCompletedEvent;
 import com.example.order.domain.event.PaymentRollbackEvent;
+import com.example.order.domain.model.HistoryStatus;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
+import com.example.order.infrastructure.history.OrderStatusHistoryService;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.outbox.OutboxEventType;
@@ -20,7 +23,6 @@ import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-
 import jakarta.persistence.PersistenceException;
 
 import java.time.Instant;
@@ -36,9 +38,10 @@ public class OrderSagaOrchestrator {
     @Inject CorrelationIdProvider correlationIdProvider;
     @Inject OrderSagaRepository sagaRepository;
     @Inject InboxService inbox;
+    @Inject OrderStatusHistoryService historyService;
 
     @Transactional
-    public UUID start(CreateOrderRequest request, UUID customerId, UUID idempotencyKey) {
+    public UUID start(CreateOrderRequest request, UUID customerId, String username, UUID idempotencyKey) {
         if (idempotencyKey != null) {
             Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
@@ -52,6 +55,8 @@ public class OrderSagaOrchestrator {
 
             Order order = new Order(new OrderId(UUID.randomUUID()));
             order.setIdempotencyKey(idempotencyKey);
+            order.setUserId(customerId);
+            order.setUsername(username);
             request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
             var total = order.totalAmount();
 
@@ -86,16 +91,6 @@ public class OrderSagaOrchestrator {
             }
             throw e;
         }
-    }
-
-    private boolean isUniqueConstraintViolation(Throwable t) {
-        while (t != null) {
-            if (t instanceof org.hibernate.exception.ConstraintViolationException) {
-                return true;
-            }
-            t = t.getCause();
-        }
-        return false;
     }
 
     @Transactional
@@ -135,7 +130,7 @@ public class OrderSagaOrchestrator {
             OrderSagaState saga = sagaRepository.find(event.orderId());
             if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.cancel(new OrderId(event.orderId()));
+            service.failPayment(new OrderId(event.orderId()));
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
 
             Log.infof("Payment failed orderId=%s step=CANCELLED reason=%s", event.orderId(), event.reason());
@@ -155,7 +150,7 @@ public class OrderSagaOrchestrator {
             OrderSagaState saga = sagaRepository.find(event.orderId());
             if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.complete(new OrderId(event.orderId()));
+            service.approveInventory(new OrderId(event.orderId()));
             saga.setStep(OrderSagaState.SagaStep.COMPLETED);
 
             Log.infof("Inventory approved orderId=%s step=COMPLETED", event.orderId());
@@ -175,7 +170,7 @@ public class OrderSagaOrchestrator {
             OrderSagaState saga = sagaRepository.find(event.orderId());
             if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.cancel(new OrderId(event.orderId()));
+            service.rejectInventory(new OrderId(event.orderId()));
 
             outbox.save(
                     Order.class.getSimpleName(),
@@ -184,9 +179,30 @@ public class OrderSagaOrchestrator {
                     PaymentRollbackEvent.of(event.orderId(), event.correlationId())
             );
 
+            saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
+            saga.setDeadline(Instant.now().plusSeconds(30));
+
+            Log.infof("Inventory rejected orderId=%s step=WAITING_ROLLBACK reason=%s", event.orderId(), event.reason());
+            inbox.markProcessed(event.eventId());
+
+        } catch (Exception e) {
+            inbox.markFailed(event.eventId(), e.getMessage());
+            throw e;
+        }
+    }
+
+    @Transactional
+    public void onPaymentRolledBack(PaymentRollbackCompletedEvent event) {
+        if (!inbox.receive(event.eventId(), "PaymentRollbackCompleted")) return;
+
+        try {
+            OrderSagaState saga = sagaRepository.find(event.orderId());
+            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+
+            historyService.record(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK);
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
 
-            Log.infof("Inventory rejected orderId=%s step=CANCELLED+ROLLBACK reason=%s", event.orderId(), event.reason());
+            Log.infof("Payment rolled back orderId=%s step=CANCELLED", event.orderId());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -198,5 +214,13 @@ public class OrderSagaOrchestrator {
     private String getCorrelationId() {
         String id = correlationIdProvider.get();
         return id != null ? id : UUID.randomUUID().toString();
+    }
+
+    private boolean isUniqueConstraintViolation(Throwable t) {
+        while (t != null) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException) return true;
+            t = t.getCause();
+        }
+        return false;
     }
 }

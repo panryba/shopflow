@@ -4,10 +4,13 @@ import com.example.order.application.port.input.OrderUseCase;
 import com.example.order.application.saga.OrderSagaOrchestrator;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
+import com.example.order.infrastructure.history.OrderStatusHistoryService;
 import com.example.order.presentation.dto.CreateOrderRequest;
 import com.example.order.presentation.dto.OrderResponse;
+import com.example.order.presentation.dto.StatusHistoryEntryResponse;
 import com.example.order.presentation.mapper.OrderPresentationMapper;
 import io.quarkus.logging.Log;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PersistenceException;
@@ -15,6 +18,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
@@ -36,14 +40,21 @@ public class OrderResource {
     OrderPresentationMapper mapper;
 
     @Inject
+    OrderStatusHistoryService historyService;
+
+    @Inject
     JsonWebToken jwt;
+
+    @ConfigProperty(name = "app.roles.admin")
+    String adminRole;
 
     @POST
     @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
     public Response create(@Valid CreateOrderRequest request,
                            @HeaderParam("Idempotency-Key") UUID idempotencyKey) {
         UUID customerId = UUID.fromString(jwt.getSubject());
-        UUID orderId = orchestrator.start(request, customerId, idempotencyKey);
+        String username = jwt.getClaim("preferred_username");
+        UUID orderId = orchestrator.start(request, customerId, username, idempotencyKey);
         Log.infof("Order accepted orderId=%s customerId=%s", orderId, customerId);
         Response.ResponseBuilder builder = Response.accepted()
                 .header("Location", "/orders/" + orderId);
@@ -60,6 +71,10 @@ public class OrderResource {
             abortOn = NotFoundException.class)
     public Response cancel(@PathParam("id") UUID id) {
         Log.infof("Order cancel requested orderId=%s", id);
+        Order existing = service.findById(new OrderId(id));
+        if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(existing.getUserId())) {
+            throw new ForbiddenException();
+        }
         service.cancel(new OrderId(id));
         Order order = service.findById(new OrderId(id));
         return Response.ok(mapper.toResponse(order)).build();
@@ -68,7 +83,11 @@ public class OrderResource {
     @GET
     @Retry(maxRetries = 3, delay = 200, jitter = 200, retryOn = PersistenceException.class)
     public List<OrderResponse> getAll() {
-        return service.findAllOrders().stream().map(mapper::toResponse).toList();
+        if (jwt.getGroups().contains(adminRole)) {
+            return service.findAllOrders().stream().map(mapper::toResponse).toList();
+        }
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return service.findByUserId(userId).stream().map(mapper::toResponse).toList();
     }
 
     @GET
@@ -78,6 +97,12 @@ public class OrderResource {
             abortOn = NotFoundException.class)
     public OrderResponse getById(@PathParam("id") UUID id) {
         Order order = service.findById(new OrderId(id));
-        return mapper.toResponse(order);
+        if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(order.getUserId())) {
+            throw new ForbiddenException();
+        }
+        List<StatusHistoryEntryResponse> history = historyService.findByOrderId(id).stream()
+                .map(h -> new StatusHistoryEntryResponse(h.getStatus().name(), h.getOccurredAt()))
+                .toList();
+        return mapper.toResponse(order, history);
     }
 }

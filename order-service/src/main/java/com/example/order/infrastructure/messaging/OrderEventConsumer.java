@@ -5,6 +5,7 @@ import com.example.order.domain.event.InventoryApprovedEvent;
 import com.example.order.domain.event.InventoryRejectedEvent;
 import com.example.order.domain.event.PaymentCompletedEvent;
 import com.example.order.domain.event.PaymentFailedEvent;
+import com.example.order.domain.event.PaymentRollbackCompletedEvent;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import io.quarkus.logging.Log;
 import io.smallrye.reactive.messaging.annotations.Blocking;
@@ -24,11 +25,8 @@ import java.util.concurrent.CompletionStage;
 @ApplicationScoped
 public class OrderEventConsumer {
 
-    @Inject
-    OrderSagaOrchestrator orchestrator;
-
-    @Inject
-    CorrelationIdProvider correlationIdProvider;
+    @Inject OrderSagaOrchestrator orchestrator;
+    @Inject CorrelationIdProvider correlationIdProvider;
 
     @Incoming("payment-completed")
     @Blocking
@@ -106,6 +104,27 @@ public class OrderEventConsumer {
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onInventoryRejected failed: %s", e.getMessage());
+            return message.nack(e);
+        } finally {
+            clearMDC();
+        }
+    }
+
+    @Incoming("payment-rollback-completed")
+    @Blocking
+    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    public CompletionStage<Void> onPaymentRolledBack(Message<com.example.order.events.avro.PaymentRollbackCompletedEvent> message) {
+        try {
+            var avro = message.getPayload();
+            setMDC(message, avro.getOrderId().toString());
+            Log.infof("Received payment-rollback-completed orderId=%s", avro.getOrderId());
+            orchestrator.onPaymentRolledBack(new PaymentRollbackCompletedEvent(
+                    avro.getEventId().toString(),
+                    UUID.fromString(avro.getOrderId().toString()),
+                    avro.getCorrelationId().toString()));
+            return message.ack();
+        } catch (Exception e) {
+            Log.errorf(e, "onPaymentRolledBack failed: %s", e.getMessage());
             return message.nack(e);
         } finally {
             clearMDC();

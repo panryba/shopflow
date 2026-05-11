@@ -16,14 +16,9 @@ import java.time.Instant;
 @ApplicationScoped
 public class SagaTimeoutJob {
 
-    @Inject
-    OrderSagaRepository sagaRepository;
-
-    @Inject
-    OrderUseCase orderService;
-
-    @Inject
-    OutboxService outbox;
+    @Inject OrderSagaRepository sagaRepository;
+    @Inject OrderUseCase orderService;
+    @Inject OutboxService outbox;
 
     @Scheduled(every = "10s")
     @Transactional
@@ -48,6 +43,7 @@ public class SagaTimeoutJob {
                         PaymentRollbackEvent.of(saga.getOrderId(), saga.getCorrelationId())
                 );
             }
+            case WAITING_ROLLBACK -> orderService.cancel(orderId);
             default -> { return; }
         }
 

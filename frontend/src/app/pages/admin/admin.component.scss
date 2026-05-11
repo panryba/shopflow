@@ -1,0 +1,33 @@
+.page {
+  padding: 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.page-title {
+  margin-bottom: 2rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.toggle-card {
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toggle-label {
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+}
+
+.toggle-hint {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}

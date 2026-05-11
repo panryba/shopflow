@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +29,20 @@ public class OrderEntity {
 
     @Column(name = "idempotency_key")
     private UUID idempotencyKey;
+
+    @Column(name = "user_id")
+    private UUID userId;
+
+    @Column(name = "user_name")
+    private String userName;
+
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    void prePersist() {
+        createdAt = Instant.now();
+    }
 
     @OneToMany(
             mappedBy = "order",

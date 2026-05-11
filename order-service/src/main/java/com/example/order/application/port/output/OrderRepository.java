@@ -13,4 +13,5 @@ public interface OrderRepository {
     Optional<Order> findByIdempotencyKey(UUID idempotencyKey);
     void update(Order order);
     List<Order> findAllOrders();
+    List<Order> findByUserId(UUID userId);
 }

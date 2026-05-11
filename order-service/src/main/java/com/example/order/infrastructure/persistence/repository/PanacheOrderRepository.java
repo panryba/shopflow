@@ -37,6 +37,11 @@ public class PanacheOrderRepository implements OrderRepository, PanacheRepositor
     }
 
     @Override
+    public List<Order> findByUserId(UUID userId) {
+        return find("userId", userId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Optional<Order> findByIdempotencyKey(UUID idempotencyKey) {
         return find("idempotencyKey", idempotencyKey).firstResultOptional().map(mapper::toDomain);

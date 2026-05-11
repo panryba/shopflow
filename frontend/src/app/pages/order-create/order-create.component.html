@@ -1,0 +1,64 @@
+<div class="page">
+  <h2 class="page-title">Vinyl Shop</h2>
+
+  <div class="shop-layout">
+
+    <div class="catalog">
+      <p-carousel [value]="products" [numVisible]="3" [numScroll]="1" [circular]="true"
+                  [responsiveOptions]="responsiveOptions">
+        <ng-template let-product pTemplate="item">
+          <div class="product-card">
+            <img [src]="product.image" [alt]="product.artist + ' – ' + product.name" />
+            <div class="product-info">
+              <p class="artist">{{ product.artist }}</p>
+              <p class="album">{{ product.name }}</p>
+              <p class="price">{{ product.price | number:'1.2-2' }} USD</p>
+            </div>
+            <p-button label="Add to Cart" icon="pi pi-shopping-cart" styleClass="w-full btn-add-cart"
+                      (click)="cartService.add(product)" />
+          </div>
+        </ng-template>
+      </p-carousel>
+    </div>
+
+    <div class="cart-panel">
+      <p-card header="Cart">
+        @if (cartService.cart().length === 0) {
+          <div class="empty-cart">
+            <i class="pi pi-shopping-cart"></i>
+            <p>Your cart is empty</p>
+          </div>
+        } @else {
+          @for (item of cartService.cart(); track item.product.id) {
+            <div class="cart-item">
+              <img [src]="item.product.image" [alt]="item.product.name" />
+              <div class="item-info">
+                <p class="item-name">{{ item.product.artist }} – {{ item.product.name }}</p>
+                <p class="item-price">{{ item.product.price | number:'1.2-2' }} USD</p>
+              </div>
+              <div class="qty-control">
+                <p-button icon="pi pi-minus" size="small" severity="secondary"
+                          (click)="cartService.setQuantity(item.product.id, item.quantity - 1)" />
+                <span>{{ item.quantity }}</span>
+                <p-button icon="pi pi-plus" size="small" severity="secondary"
+                          (click)="cartService.setQuantity(item.product.id, item.quantity + 1)" />
+              </div>
+              <p-button icon="pi pi-trash" severity="danger" size="small"
+                        (click)="cartService.remove(item.product.id)" />
+            </div>
+          }
+
+          <div class="cart-footer">
+            <div class="total-row">
+              <span>Total</span>
+              <span>{{ cartService.total() | number:'1.2-2' }} USD</span>
+            </div>
+            <p-button label="Place Order" icon="pi pi-check" styleClass="w-full btn-add-cart"
+                      (click)="submit()" />
+          </div>
+        }
+      </p-card>
+    </div>
+
+  </div>
+</div>

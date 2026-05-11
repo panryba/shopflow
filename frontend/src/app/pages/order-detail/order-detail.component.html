@@ -15,7 +15,7 @@
     <div class="section">
       <div class="section-header">
         <h3>Saga Timeline</h3>
-        @if (order()?.history | sagaLive) {
+        @if (isWatching() && (order()?.history | sagaLive)) {
           <span class="live-badge"><span class="live-dot"></span>Live</span>
         }
       </div>

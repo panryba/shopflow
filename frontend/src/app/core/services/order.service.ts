@@ -31,12 +31,12 @@ export class OrderService {
 
   watchOrder(id: string): Observable<OrderResponse> {
     const TERMINAL = new Set<string>([
-      OrderStatus.INVENTORY_APPROVED, OrderStatus.PAYMENT_FAILED,
-      OrderStatus.CANCELLED, 'PAYMENT_ROLLED_BACK'
+      OrderStatus.INVENTORY_APPROVED, OrderStatus.PAYMENT_FAILED, 'PAYMENT_ROLLED_BACK'
     ]);
 
     return new Observable<OrderResponse>(subscriber => {
       let active = true;
+      let streamClosed = false;
       const abort = new AbortController();
 
       const fetchOrder = () => {
@@ -46,7 +46,7 @@ export class OrderService {
             if (!active) return;
             subscriber.next(order);
             const last = order.history?.at(-1)?.status;
-            if (last && TERMINAL.has(last)) {
+            if (last && (TERMINAL.has(last) || streamClosed)) {
               cleanup();
               subscriber.complete();
             }
@@ -74,10 +74,12 @@ export class OrderService {
           if (done) break;
           if (decoder.decode(value, { stream: true }).includes('data:')) fetchOrder();
         }
-        // Stream closed by server (saga done) — fetch final state in case last event was buffered
+        // Stream closed by server — saga is done, fetch final state
+        streamClosed = true;
         if (active) fetchOrder();
       }).catch(() => {
         // Connection lost — fetch current state so we don't hang forever
+        streamClosed = true;
         if (active) fetchOrder();
       });
 

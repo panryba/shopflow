@@ -41,6 +41,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   private orderService = inject(OrderService);
   order = signal<OrderResponse | null>(null);
   loading = signal(true);
+  isWatching = signal(true);
 
   private sub?: Subscription;
 
@@ -59,7 +60,11 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         this.order.set(order);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error: () => {
+        this.loading.set(false);
+        this.isWatching.set(false);
+      },
+      complete: () => this.isWatching.set(false)
     });
   }
 

@@ -18,10 +18,17 @@ docker compose up
 
 | Endpoint | URL |
 |----------|-----|
+| Frontend | http://localhost:4200 |
 | API Gateway | http://localhost:8090 |
 | Gateway Swagger UI | http://localhost:8090/q/swagger-ui |
-| Keycloak Admin | http://localhost:8180/admin (admin / admin) |
-| Frontend | http://localhost:4200 |
+| Keycloak Admin | http://localhost:8180/admin (admin / password) |
+
+**Default users** (pre-seeded in Keycloak):
+
+| Username | Password | Role |
+|----------|----------|------|
+| user1 | password | user |
+| admin | password | admin |
 
 ---
 
@@ -133,7 +140,7 @@ JWT signature validation is enforced at the gateway only. Downstream services tr
 
 The raw `Authorization: Bearer <token>` header is forwarded downstream via a `ClientRequestFilter` (`OutgoingJwtFilter`) so services can read user identity without performing OIDC validation against Keycloak again. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires role `admin`. The `order-service` extracts customer identity directly from the forwarded token — `customerId` is never trusted from the request body.
 
-In the current Keycloak configuration, the `sub` claim is a UUID and is used as the authoritative customer identity for every order.
+In the current Keycloak configuration, the `sub` claim is a UUID and is used as the authoritative customer identity for every order. Keycloak roles are mapped via `realm_access.roles` (`smallrye.jwt.path.groups=realm_access/roles`). The `preferred_username` claim is written to `orders.user_name` at creation time to avoid cross-service user lookups — there is no separate users table.
 
 ---
 
@@ -264,20 +271,56 @@ Returns a single order.
 ```json
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "status": "COMPLETED",
+  "username": "user1",
+  "status": "INVENTORY_APPROVED",
   "items": [
     { "productId": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "quantity": 2, "price": 74.99 }
   ],
-  "total": 149.98
+  "total": 149.98,
+  "history": [
+    { "status": "CREATED", "occurredAt": "2025-01-01T10:00:00Z" },
+    { "status": "PAID", "occurredAt": "2025-01-01T10:00:01Z" },
+    { "status": "INVENTORY_APPROVED", "occurredAt": "2025-01-01T10:00:02Z" }
+  ],
+  "createdAt": "2025-01-01T10:00:00Z"
 }
 ```
 
-**Order statuses:** `PENDING` → `PAID` → `COMPLETED` / `CANCELLED`
+**Order statuses:** `CREATED` → `PAID` → `INVENTORY_APPROVED` (success) / `PAYMENT_FAILED` / `INVENTORY_REJECTED` → `CANCELLED`
+
+The `history` array records every status transition with a timestamp, enabling the saga timeline view in the frontend.
 
 ### PUT /api/orders/{id}/cancel
 Manually cancel an order.
 
 **Response** `200 OK` — returns the updated order with `status: CANCELLED`
+
+---
+
+## Frontend
+
+The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates exclusively through the API Gateway.
+
+**Pages**
+
+| Page | Path | Access |
+|------|------|--------|
+| Order List | `/orders` | all authenticated users |
+| Order Detail | `/orders/:id` | order owner or admin |
+| New Order | `/orders/new` | all authenticated users |
+| Admin Panel | `/admin` | admin role only |
+
+**Authentication** — Login is handled by Keycloak via the OIDC Authorization Code flow (`angular-oauth2-oidc`). The JWT access token is attached to every API request by an HTTP interceptor. Unauthenticated users are redirected to the Keycloak login page; users without the `admin` role are redirected away from the admin route.
+
+**Order List** — paginated table with Order ID (truncated to 13 chars, full UUID on hover), customer username, status badge, creation date, item count, and total. All users see all their own orders; admins see all orders from all users.
+
+**Order Detail** — full saga timeline (one entry per status transition with icon, colour, and timestamp), items table with album artwork, and a "Live" indicator while the saga is still in progress. The detail page polls every 2 seconds until the order reaches a terminal state (`INVENTORY_APPROVED`, `PAYMENT_FAILED`, `INVENTORY_REJECTED`, `CANCELLED`).
+
+**New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
+
+**Admin Panel** — inventory mode toggle (accept / reject all orders) that calls `PUT /api/inventory/mode`.
+
+**UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Tooltip).
 
 ---
 
@@ -289,6 +332,7 @@ Manually cancel an order.
 | `payment-completed` | payment-service | order-service |
 | `payment-failed` | payment-service | order-service |
 | `payment-rollback` | order-service | payment-service |
+| `payment-rollback-completed` | payment-service | order-service |
 | `inventory-request` | order-service | inventory-service |
 | `inventory-approved` | inventory-service | order-service |
 | `inventory-rejected` | inventory-service | order-service |
@@ -340,6 +384,6 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 - [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
-- [ ] **Angular Frontend** — product listing, shopping cart, checkout, real-time order status via SSE
+- [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification
 - [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput

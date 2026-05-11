@@ -29,4 +29,18 @@ public class InventoryModeResource {
         consumer.setAccepted(accept);
         return Response.ok("Inventory acceptance set to: " + accept).build();
     }
+
+    @GET
+    @Path("/delay")
+    @Produces(MediaType.APPLICATION_JSON)
+    public int getDelay() {
+        return consumer.getDelaySeconds();
+    }
+
+    @PUT
+    @Path("/delay")
+    public Response setDelay(@QueryParam("seconds") int seconds) {
+        consumer.setDelaySeconds(seconds);
+        return Response.ok("Inventory delay set to: " + seconds + "s").build();
+    }
 }

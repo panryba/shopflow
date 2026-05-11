@@ -1,6 +1,7 @@
 package com.example.payment.infrastructure.messaging;
 
 import io.quarkus.logging.Log;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -19,6 +20,22 @@ public class PaymentEventConsumer {
 
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
+    @ConfigProperty(name = "app.payment.failure-threshold")
+    double failureThreshold;
+
+    private volatile int delaySeconds = 0;
+
+    public int getDelaySeconds() { return delaySeconds; }
+
+    public void setDelaySeconds(int seconds) {
+        Log.infof("Payment delay changed: %ds", seconds);
+        this.delaySeconds = seconds;
+    }
+
+    private void sleep() {
+        if (delaySeconds > 0) try { Thread.sleep(delaySeconds * 1000L); } catch (InterruptedException ignored) {}
+    }
+
     @Channel("payment-completed")
     Emitter<com.example.order.events.avro.PaymentCompletedEvent> successEmitter;
 
@@ -29,8 +46,10 @@ public class PaymentEventConsumer {
     Emitter<com.example.order.events.avro.PaymentRollbackCompletedEvent> rollbackCompletedEmitter;
 
     @Incoming("payment-request")
+    @io.smallrye.reactive.messaging.annotations.Blocking
     public CompletionStage<Void> process(Message<com.example.order.events.avro.PaymentRequestEvent> message) {
         try {
+            sleep();
             var avro = message.getPayload();
             boolean success = processPayment(avro.getAmount().toString());
             String orderId = avro.getOrderId().toString();
@@ -63,8 +82,10 @@ public class PaymentEventConsumer {
     }
 
     @Incoming("payment-rollback")
+    @io.smallrye.reactive.messaging.annotations.Blocking
     public CompletionStage<Void> rollback(Message<com.example.order.events.avro.PaymentRollbackEvent> message) {
         try {
+            sleep();
             var avro = message.getPayload();
             String orderId = avro.getOrderId().toString();
             String correlationId = avro.getCorrelationId().toString();
@@ -86,7 +107,7 @@ public class PaymentEventConsumer {
     }
 
     private boolean processPayment(String amountStr) {
-        return new BigDecimal(amountStr).doubleValue() < 1000;
+        return new BigDecimal(amountStr).doubleValue() < failureThreshold;
     }
 
     private OutgoingKafkaRecordMetadata<String> key(String orderId, String correlationId) {

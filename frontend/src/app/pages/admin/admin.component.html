@@ -1,8 +1,8 @@
 <div class="page">
-  <h2 class="page-title">Inventory Control</h2>
+  <h2 class="page-title">Admin Controls</h2>
 
-  <div class="toggle-card">
-    <p class="toggle-label">Order acceptance mode</p>
+  <div class="card">
+    <p class="card-label">Order acceptance mode</p>
     <p-toggleButton
       [ngModel]="accept()"
       onLabel="Accept Orders"
@@ -11,12 +11,37 @@
       offIcon="pi pi-times"
       [class]="accept() ? 'admin-toggle admin-toggle--accept' : 'admin-toggle admin-toggle--reject'"
       (onChange)="setMode($event.checked)" />
-    <p class="toggle-hint">
+    <p class="card-hint">
       @if (accept()) {
         Inventory will approve all reservation requests.
       } @else {
         Inventory will reject all reservation requests — orders will be cancelled.
       }
     </p>
+  </div>
+
+  <div class="card">
+    <p class="card-label">Saga step delay</p>
+    <p class="card-hint">Slow the saga down to make each status transition visible in the live timeline.</p>
+    <div class="delay-row">
+      <div class="delay-item">
+        <label class="delay-label">Payment</label>
+        <p-select
+          [options]="delayOptions"
+          [ngModel]="paymentDelay()"
+          (ngModelChange)="setPaymentDelay($event)"
+          optionLabel="label"
+          optionValue="value" />
+      </div>
+      <div class="delay-item">
+        <label class="delay-label">Inventory</label>
+        <p-select
+          [options]="delayOptions"
+          [ngModel]="inventoryDelay()"
+          (ngModelChange)="setInventoryDelay($event)"
+          optionLabel="label"
+          optionValue="value" />
+      </div>
+    </div>
   </div>
 </div>

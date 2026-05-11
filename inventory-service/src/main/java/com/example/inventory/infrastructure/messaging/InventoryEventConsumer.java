@@ -25,20 +25,27 @@ public class InventoryEventConsumer {
     Emitter<com.example.order.events.avro.InventoryRejectedEvent> rejectedEmitter;
 
     private volatile boolean accepted = true;
+    private volatile int delaySeconds = 0;
 
-    public boolean isAccepted() {
-        return accepted;
-    }
+    public boolean isAccepted() { return accepted; }
 
     public void setAccepted(boolean accepted) {
         Log.infof("Inventory mode changed: accept=%s", accepted);
         this.accepted = accepted;
     }
 
+    public int getDelaySeconds() { return delaySeconds; }
+
+    public void setDelaySeconds(int seconds) {
+        Log.infof("Inventory delay changed: %ds", seconds);
+        this.delaySeconds = seconds;
+    }
+
     @Incoming("inventory-request")
+    @io.smallrye.reactive.messaging.annotations.Blocking
     public CompletionStage<Void> process(Message<com.example.order.events.avro.InventoryRequestEvent> message) {
         try {
-
+            sleep();
             var avro = message.getPayload();
             String orderId = avro.getOrderId().toString();
             String correlationId = avro.getCorrelationId().toString();
@@ -67,6 +74,10 @@ public class InventoryEventConsumer {
         } catch (Exception e) {
             return message.nack(e);
         }
+    }
+
+    private void sleep() {
+        if (delaySeconds > 0) try { Thread.sleep(delaySeconds * 1000L); } catch (InterruptedException ignored) {}
     }
 
     private OutgoingKafkaRecordMetadata<String> key(String orderId, String correlationId) {

@@ -226,7 +226,7 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
 
 | Scenario | How                                                                                                         |
 |----------|-------------------------------------------------------------------------------------------------------------|
-| Payment failure | Place an order where total exceeds 1000                                                                     |
+| Payment failure | Place an order where total exceeds 300 (e.g. quantity 9 of any album)                                       |
 | Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required)<br/>then place any order |
 | Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required)                      |
 
@@ -323,9 +323,9 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
-**Admin Panel** — inventory mode toggle (accept / reject all orders) that calls `PUT /api/inventory/mode`.
+**Admin Panel** — inventory mode toggle (accept / reject all orders) and per-service saga step delay dropdowns (0 s / 1 s / 2 s / 3 s / 5 s). Setting a delay slows down the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo.
 
-**UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Tooltip).
+**UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Select, Tooltip).
 
 ---
 

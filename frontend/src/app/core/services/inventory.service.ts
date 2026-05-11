@@ -15,4 +15,14 @@ export class InventoryService {
       responseType: 'text'
     });
   }
+
+  getDelay(): Observable<number> {
+    return this.http.get<number>('/api/inventory/delay');
+  }
+
+  setDelay(seconds: number): Observable<string> {
+    return this.http.put(`/api/inventory/delay?seconds=${seconds}`, null, {
+      responseType: 'text'
+    });
+  }
 }

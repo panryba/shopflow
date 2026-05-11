@@ -45,6 +45,21 @@ public class InventoryGatewayResource {
         return forward(inventoryServiceClient.setMode(accept));
     }
 
+    @GET
+    @Path("/delay")
+    @RolesAllowed("admin")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getDelay() {
+        return forward(inventoryServiceClient.getDelay());
+    }
+
+    @PUT
+    @Path("/delay")
+    @RolesAllowed("admin")
+    public Response setDelay(@QueryParam("seconds") int seconds) {
+        return forward(inventoryServiceClient.setDelay(seconds));
+    }
+
     private Response forward(Response downstream) {
         String body = downstream.hasEntity()
                 ? downstream.readEntity(String.class)

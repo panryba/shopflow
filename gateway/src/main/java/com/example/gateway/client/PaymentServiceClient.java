@@ -14,25 +14,12 @@ import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-@RegisterRestClient(configKey = "inventory-service")
+@RegisterRestClient(configKey = "payment-service")
 @RegisterProvider(OutgoingCorrelationIdFilter.class)
 @RegisterProvider(OutgoingJwtFilter.class)
-@Path("/inventory")
+@Path("/payment")
 @Produces(MediaType.TEXT_PLAIN)
-public interface InventoryServiceClient {
-
-    @GET
-    @Path("/mode")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Retry(maxRetries = 3, delay = 200)
-    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response getMode();
-
-    @PUT
-    @Path("/mode")
-    @Retry(maxRetries = 3, delay = 200)
-    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response setMode(@QueryParam("accept") boolean accept);
+public interface PaymentServiceClient {
 
     @GET
     @Path("/delay")

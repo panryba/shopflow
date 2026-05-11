@@ -351,7 +351,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Layer | Technology |
 |-------|-----------|
 | Runtime | Quarkus 3.33, Java 25 |
-| Frontend | Angular 21, nginx |
+| Frontend | Angular 21, PrimeNG 21, nginx |
 | Messaging | Apache Kafka 4.1.1, SmallRye Reactive Messaging |
 | Serialization | Apache Avro 1.12.1, Apicurio Schema Registry 3.1.7 |
 | Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |

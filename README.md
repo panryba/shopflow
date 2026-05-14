@@ -294,14 +294,25 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
   | jq -r .access_token)
 ```
 
-| Scenario | How |
-|----------|-----|
-| Payment failure | Place an order where total exceeds 300 (e.g. quantity 9 of any album) |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` (admin token required), then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` (admin token required) |
-| Payment consumer crash → DLQ | `PUT http://localhost:8090/api/payment/crash?enabled=true` (admin token required), then place any order — payment consumer throws on every attempt, message lands in `payment-request-dlq` after 5 retries, saga times out and cancels after 30 s |
-| Inventory consumer crash → DLQ | `PUT http://localhost:8090/api/inventory/crash?enabled=true` (admin token required), then place any order — inventory consumer throws on every attempt, message lands in `inventory-request-dlq` after 5 retries, saga times out and cancels after 30 s |
-| Disable crash mode | `PUT http://localhost:8090/api/payment/crash?enabled=false` / `PUT http://localhost:8090/api/inventory/crash?enabled=false` (admin token required) |
+**Payment failure** — place an order where the total exceeds 300 (e.g. quantity 9 of any album).
+
+**Inventory rejection** — set inventory to reject mode, then place any order:
+```bash
+PUT http://localhost:8090/api/inventory/mode?accept=false   # Authorization: Bearer $ADMIN_TOKEN
+PUT http://localhost:8090/api/inventory/mode?accept=true    # restore
+```
+
+**Payment consumer crash → DLQ** — enable crash mode, then place any order. The payment consumer throws on every attempt; after 5 retries the message lands in `payment-request-dlq`. The saga times out after 30 s and cancels the order.
+```bash
+PUT http://localhost:8090/api/payment/crash?enabled=true    # Authorization: Bearer $ADMIN_TOKEN
+PUT http://localhost:8090/api/payment/crash?enabled=false   # restore
+```
+
+**Inventory consumer crash → DLQ** — same as above but for the inventory step. The message lands in `inventory-request-dlq` and a `payment-rollback` is triggered before cancellation.
+```bash
+PUT http://localhost:8090/api/inventory/crash?enabled=true  # Authorization: Bearer $ADMIN_TOKEN
+PUT http://localhost:8090/api/inventory/crash?enabled=false # restore
+```
 
 All failure scenarios can also be toggled from the **Admin Panel** in the frontend without curl.
 

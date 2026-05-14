@@ -178,10 +178,10 @@ Prometheus metrics are exposed on `/q/metrics` by all four services (including t
 
 Four Grafana dashboards are provisioned automatically:
 
-- **ShopFlow — Saga & Orders** — saga counter stat tiles (orders created, completed, failed, compensated, timed out); saga health time series (started vs completed vs failed trend, success rate %); saga duration histogram (average by outcome) and order creation rate (increase over 5 min)
-- **ShopFlow — Kafka & Messaging** — stat tiles for payments and inventory accepted/rejected; payment acceptance rate % and inventory approval rate % time series
-- **ShopFlow — System Health** — infrastructure health (outbox pending lag, inbox duplicates blocked, DLQ event counts via kafka-exporter); JVM heap usage (used vs max), GC pause rate, HTTP request rate and HTTP 5xx error rate at the gateway
-- **ShopFlow — Logs (Loki)** — distributed trace panel (paste a Correlation ID to see the full saga flow across all services in chronological order); live orchestrator and gateway log streams; ERROR stream with per-service error count barchart; log volume per service
+- **ShopFlow — 1. Saga & Orders** — saga counter stat tiles (orders created, completed, failed, compensated, timed out); saga health time series (started vs completed vs failed trend, success rate %); average saga duration by outcome and order creation rate (increase over 5 min)
+- **ShopFlow — 2. Kafka & Messaging** — stat tiles for payments and inventory accepted/rejected; payment acceptance rate % and inventory approval rate % time series
+- **ShopFlow — 3. Logs (Loki)** — distributed trace panel (paste a Correlation ID to see the full saga flow across all services in chronological order); live orchestrator and gateway log streams; ERROR stream with per-service error count barchart; log volume per service
+- **ShopFlow — 4. System Health** — infrastructure health (outbox pending lag, inbox duplicates blocked, DLQ event counts via kafka-exporter); JVM heap usage (used vs max), GC pause rate, HTTP request rate and HTTP 5xx error rate at the gateway
 
 **Observability stack:**
 
@@ -294,11 +294,16 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
   | jq -r .access_token)
 ```
 
-| Scenario | How                                                                                                         |
-|----------|-------------------------------------------------------------------------------------------------------------|
-| Payment failure | Place an order where total exceeds 300 (e.g. quantity 9 of any album)                                       |
-| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` <br/>(admin token required)<br/>then place any order |
-| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` <br/>(admin token required)                      |
+| Scenario | How |
+|----------|-----|
+| Payment failure | Place an order where total exceeds 300 (e.g. quantity 9 of any album) |
+| Inventory rejection | `PUT http://localhost:8090/api/inventory/mode?accept=false` (admin token required), then place any order |
+| Restore inventory acceptance | `PUT http://localhost:8090/api/inventory/mode?accept=true` (admin token required) |
+| Payment consumer crash → DLQ | `PUT http://localhost:8090/api/payment/crash?enabled=true` (admin token required), then place any order — payment consumer throws on every attempt, message lands in `payment-request-dlq` after 5 retries, saga times out and cancels after 30 s |
+| Inventory consumer crash → DLQ | `PUT http://localhost:8090/api/inventory/crash?enabled=true` (admin token required), then place any order — inventory consumer throws on every attempt, message lands in `inventory-request-dlq` after 5 retries, saga times out and cancels after 30 s |
+| Disable crash mode | `PUT http://localhost:8090/api/payment/crash?enabled=false` / `PUT http://localhost:8090/api/inventory/crash?enabled=false` (admin token required) |
+
+All failure scenarios can also be toggled from the **Admin Panel** in the frontend without curl.
 
 ---
 
@@ -393,7 +398,10 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
-**Admin Panel** — inventory mode toggle (accept / reject all orders) and per-service saga step delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s). Setting a delay slows down the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo.
+**Admin Panel** — three control cards, all require `admin` role:
+- **Order acceptance mode** — toggle inventory between accepting and rejecting all reservation requests
+- **Saga step delay** — per-service delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s); slows the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo
+- **Failure simulation** — crash mode toggles for the payment and inventory consumers; when enabled the consumer throws on every message, triggering 5 retries and moving the message to the DLQ; the saga times out after 30 s and cancels the order; visible in the Grafana ERROR stream and DLQ event count panel
 
 **UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Select, Tooltip).
 
@@ -461,5 +469,5 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
-- [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, System Health, Logs); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates; Correlation ID distributed tracing across all services via dedicated Loki dashboard
+- [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, Logs, System Health); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates at the gateway; Correlation ID distributed tracing across all services via dedicated Loki dashboard; consumer crash simulation with DLQ observability
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification

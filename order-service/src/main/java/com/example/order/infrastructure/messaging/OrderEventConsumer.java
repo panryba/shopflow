@@ -35,7 +35,7 @@ public class OrderEventConsumer {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            Log.infof("Received payment-completed orderId=%s", avro.getOrderId());
+            Log.infof("Received payment-completed");
             orchestrator.onPaymentCompleted(new PaymentCompletedEvent(
                     avro.getEventId().toString(), UUID.fromString(avro.getOrderId().toString()), avro.getCorrelationId().toString()));
             return message.ack();
@@ -54,7 +54,7 @@ public class OrderEventConsumer {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            Log.infof("Received payment-failed orderId=%s", avro.getOrderId());
+            Log.infof("Received payment-failed");
             orchestrator.onPaymentFailed(new PaymentFailedEvent(
                     avro.getEventId().toString(),
                     UUID.fromString(avro.getOrderId().toString()),
@@ -76,7 +76,7 @@ public class OrderEventConsumer {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            Log.infof("Received inventory-approved orderId=%s", avro.getOrderId());
+            Log.infof("Received inventory-approved");
             orchestrator.onInventoryApproved(new InventoryApprovedEvent(
                     avro.getEventId().toString(), UUID.fromString(avro.getOrderId().toString()), avro.getCorrelationId().toString()));
             return message.ack();
@@ -95,7 +95,7 @@ public class OrderEventConsumer {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            Log.infof("Received inventory-rejected orderId=%s", avro.getOrderId());
+            Log.infof("Received inventory-rejected");
             orchestrator.onInventoryRejected(new InventoryRejectedEvent(
                     avro.getEventId().toString(),
                     UUID.fromString(avro.getOrderId().toString()),
@@ -117,7 +117,7 @@ public class OrderEventConsumer {
         try {
             var avro = message.getPayload();
             setMDC(message, avro.getOrderId().toString());
-            Log.infof("Received payment-rollback-completed orderId=%s", avro.getOrderId());
+            Log.infof("Received payment-rollback-completed");
             orchestrator.onPaymentRolledBack(new PaymentRollbackCompletedEvent(
                     avro.getEventId().toString(),
                     UUID.fromString(avro.getOrderId().toString()),

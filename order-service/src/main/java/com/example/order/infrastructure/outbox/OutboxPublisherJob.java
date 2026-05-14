@@ -11,6 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.MDC;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -44,14 +45,17 @@ public class OutboxPublisherJob {
     }
 
     void processPublish(OutboxEventEntity event) {
+        MDC.put("orderId", event.getAggregateId());
         try {
             route(event);
             event.setProcessed(true);
             event.setProcessedAt(Instant.now());
-            Log.infof("Outbox sent type=%s aggregateId=%s", event.getEventType(), event.getAggregateId());
+            Log.infof("Outbox sent type=%s", event.getEventType());
         } catch (Exception e) {
             event.setRetryCount(event.getRetryCount() + 1);
             event.setLastError(e.getMessage());
+        } finally {
+            MDC.remove("orderId");
         }
     }
 

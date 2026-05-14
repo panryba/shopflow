@@ -1,7 +1,10 @@
 package com.example.payment.infrastructure.messaging;
 
+import com.example.payment.infrastructure.metrics.PaymentMetrics;
 import io.quarkus.logging.Log;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.MDC;
 import io.smallrye.reactive.messaging.kafka.api.OutgoingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -23,6 +26,12 @@ public class PaymentEventConsumer {
     @ConfigProperty(name = "app.payment.failure-threshold")
     double failureThreshold;
 
+    @Inject
+    PaymentMetrics metrics;
+
+    @ConfigProperty(name = "app.payment.crash", defaultValue = "false")
+    boolean crash;
+
     private volatile int delaySeconds = 0;
 
     public int getDelaySeconds() { return delaySeconds; }
@@ -30,6 +39,13 @@ public class PaymentEventConsumer {
     public void setDelaySeconds(int seconds) {
         Log.infof("Payment delay changed: %ds", seconds);
         this.delaySeconds = seconds;
+    }
+
+    public boolean isCrash() { return crash; }
+
+    public void setCrash(boolean crash) {
+        Log.infof("Payment crash mode changed: crash=%s", crash);
+        this.crash = crash;
     }
 
     private void sleep() {
@@ -49,14 +65,18 @@ public class PaymentEventConsumer {
     @io.smallrye.reactive.messaging.annotations.Blocking
     public CompletionStage<Void> process(Message<com.example.order.events.avro.PaymentRequestEvent> message) {
         try {
+            if (crash) throw new RuntimeException("Simulated consumer crash");
             sleep();
             var avro = message.getPayload();
             boolean success = processPayment(avro.getAmount().toString());
             String orderId = avro.getOrderId().toString();
             String correlationId = avro.getCorrelationId().toString();
+            MDC.put("correlationId", correlationId);
+            MDC.put("orderId", orderId);
 
             if (success) {
-                Log.info("PAYMENT SUCCESS");
+                metrics.accepted();
+                Log.infof("Payment accepted");
                 successEmitter.send(Message.of(
                         com.example.order.events.avro.PaymentCompletedEvent.newBuilder()
                                 .setEventId(UUID.randomUUID().toString())
@@ -65,7 +85,8 @@ public class PaymentEventConsumer {
                                 .build())
                         .addMetadata(key(orderId, correlationId)));
             } else {
-                Log.info("PAYMENT FAILED");
+                metrics.rejected();
+                Log.infof("Payment rejected reason=Insufficient funds");
                 failedEmitter.send(Message.of(
                         com.example.order.events.avro.PaymentFailedEvent.newBuilder()
                                 .setEventId(UUID.randomUUID().toString())
@@ -77,7 +98,11 @@ public class PaymentEventConsumer {
             }
             return message.ack();
         } catch (Exception e) {
+            Log.errorf("Payment consumer failure: %s", e.getMessage());
             return message.nack(e);
+        } finally {
+            MDC.remove("correlationId");
+            MDC.remove("orderId");
         }
     }
 
@@ -90,7 +115,10 @@ public class PaymentEventConsumer {
             String orderId = avro.getOrderId().toString();
             String correlationId = avro.getCorrelationId().toString();
 
-            Log.infov("PAYMENT ROLLBACK id={0}", orderId);
+            MDC.put("correlationId", correlationId);
+            MDC.put("orderId", orderId);
+            metrics.rolledBack();
+            Log.infof("Payment rollback completed");
 
             rollbackCompletedEmitter.send(Message.of(
                     com.example.order.events.avro.PaymentRollbackCompletedEvent.newBuilder()
@@ -103,6 +131,9 @@ public class PaymentEventConsumer {
             return message.ack();
         } catch (Exception e) {
             return message.nack(e);
+        } finally {
+            MDC.remove("correlationId");
+            MDC.remove("orderId");
         }
     }
 

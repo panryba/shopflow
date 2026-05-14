@@ -1,8 +1,8 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **Idempotent Order Creation**, **API Gateway**, **Fault Tolerance**, and **JWT Authentication**.
+A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **Idempotent Order Creation**, **API Gateway**, **Fault Tolerance**, **JWT Authentication**, and **Observability**.
 
 ---
 
@@ -22,6 +22,8 @@ docker compose up
 | API Gateway | http://localhost:8090 |
 | Gateway Swagger UI | http://localhost:8090/q/swagger-ui |
 | Keycloak Admin | http://localhost:8180/admin (admin / password) |
+| Grafana (metrics + logs) | http://localhost:3000 |
+| Prometheus | http://localhost:9090 |
 
 **Default users** (pre-seeded in Keycloak):
 
@@ -63,6 +65,11 @@ graph TB
         ODB[(Order DB<br/>PostgreSQL)]
     end
 
+    subgraph Observability
+        PROM[Prometheus]
+        GRAF[Grafana]
+    end
+
     UI <-->|OIDC login| KC
     UI -->|HTTPS + JWT| GW
     GW -->|validate token| KC
@@ -82,6 +89,11 @@ graph TB
     IS -->|inventory-approved<br/>inventory-rejected| K
 
     K <-->|Avro schema lookup| SR
+
+    PROM -->|scrape /q/metrics| OS
+    PROM -->|scrape /q/metrics| PS
+    PROM -->|scrape /q/metrics| IS
+    GRAF -->|query| PROM
 ```
 
 ---
@@ -134,6 +146,64 @@ A dedicated Quarkus service (port 8090) acts as the single entry point for all c
 
 ### Fault Tolerance
 All gateway-to-downstream calls are protected by MicroProfile Fault Tolerance. Read and idempotent write operations use `@Retry(maxRetries = 3, delay = 200ms)` — retries abort immediately on `WebApplicationException` so 4xx responses are never retried. POST (create order) gets no retry as the operation is not idempotent. All operations are protected by `@CircuitBreaker(requestVolumeThreshold = 10, failureRatio = 0.5, delay = 5s, successThreshold = 2)` — after 50% failures across 10 requests the circuit opens for 5 seconds; once open, requests fail fast with `503 SERVICE_UNAVAILABLE` and a structured `GatewayErrorResponse` without hitting the downstream service. REST clients are configured with a 1s connect timeout and 3s read timeout to bound worst-case latency on the local/Docker network.
+
+### Observability
+Prometheus metrics are exposed on `/q/metrics` by all four services (including the gateway) via Micrometer. Grafana Alloy ships all Docker container logs to Loki. Grafana is provisioned automatically with both datasources and four pre-built dashboards — no manual setup required.
+
+**Custom metrics (order-service):**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `orders_created_total` | Counter | Orders accepted by the saga |
+| `sagas_completed_total{outcome=COMPLETED}` | Counter | Sagas reaching a successful terminal state |
+| `sagas_completed_total{outcome=CANCELLED}` | Counter | Sagas reaching any failed terminal state |
+| `sagas_compensated_total` | Counter | Subset of failed: sagas where payment was rolled back |
+| `sagas_timed_out_total` | Counter | Subset of failed: sagas cancelled due to step deadline exceeded |
+| `saga_duration_seconds{outcome}` | Timer | Time from order creation to saga completion; `outcome` = `COMPLETED` or `CANCELLED` |
+| `outbox_pending` | Gauge | Unsent outbox rows waiting to be published; updated every 15 s |
+| `inbox_duplicates_total` | Counter | Duplicate inbox events silently rejected |
+
+**Custom metrics (payment-service):**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `payments_processed_total{result}` | Counter | Payments accepted or rejected |
+| `payment_rollbacks_total` | Counter | Payment rollbacks processed |
+
+**Custom metrics (inventory-service):**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `inventory_requests_total{result}` | Counter | Inventory checks approved or rejected |
+
+Four Grafana dashboards are provisioned automatically:
+
+- **ShopFlow — Saga & Orders** — saga counter stat tiles (orders created, completed, failed, compensated, timed out); saga health time series (started vs completed vs failed trend, success rate %); saga duration histogram (average by outcome) and order creation rate (increase over 5 min)
+- **ShopFlow — Kafka & Messaging** — stat tiles for payments and inventory accepted/rejected; payment acceptance rate % and inventory approval rate % time series
+- **ShopFlow — System Health** — infrastructure health (outbox pending lag, inbox duplicates blocked, DLQ event counts via kafka-exporter); JVM heap usage (used vs max), GC pause rate, HTTP request rate and HTTP 5xx error rate at the gateway
+- **ShopFlow — Logs (Loki)** — distributed trace panel (paste a Correlation ID to see the full saga flow across all services in chronological order); live orchestrator and gateway log streams; ERROR stream with per-service error count barchart; log volume per service
+
+**Observability stack:**
+
+| Tool | Port | Role |
+|------|------|------|
+| Prometheus | 9090 | Scrapes `/q/metrics` from all four services (order, payment, inventory, gateway) every 5 s |
+| Loki | 3100 | Log aggregation store — receives logs shipped by Alloy |
+| Alloy | — | Reads Docker container logs via Docker socket and ships to Loki |
+| Kafka Exporter | 9308 | Exposes Kafka topic offsets (including DLQ topics) as Prometheus metrics |
+| Grafana | 3000 | Pre-provisioned with Prometheus + Loki datasources and four ShopFlow dashboards |
+
+**Log querying with Loki:** the **ShopFlow — Logs (Loki)** dashboard has a Correlation ID input at the top — paste the `X-Correlation-ID` value from any response header and instantly see the full distributed saga flow across all services in chronological order. No terminal windows, no manual grepping.
+
+For ad-hoc queries open **Grafana → Explore** and use LogQL directly:
+
+```logql
+# trace full request lifecycle including pre-order gateway logs
+{service=~"order-service|payment-service|inventory-service|gateway"} |= "corrId=<uuid>"
+
+# trace a specific order across all services
+{service=~"order-service|payment-service|inventory-service"} |= "orderId=<uuid>"
+```
 
 ### JWT Authentication
 JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
@@ -238,7 +308,7 @@ All endpoints are served by the **API Gateway** at `http://localhost:8090/api`.
 
 All endpoints require a `Bearer` token in the `Authorization` header. Order endpoints require role `user` or `admin`; inventory mode toggle requires role `admin`.
 
-Swagger UI available at `http://localhost:8090/q/swagger-ui` in dev mode.
+Swagger UI available at `http://localhost:8090/q/swagger-ui`.
 
 ### POST /api/orders
 Place a new order. Starts the saga asynchronously.
@@ -357,6 +427,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
 | Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |
+| Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
 
@@ -390,5 +461,5 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
+- [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, System Health, Logs); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates; Correlation ID distributed tracing across all services via dedicated Loki dashboard
 - [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification
-- [ ] **Observability** — Prometheus metrics, Grafana dashboard; key metrics: outbox lag, DLQ size, saga duration, order throughput

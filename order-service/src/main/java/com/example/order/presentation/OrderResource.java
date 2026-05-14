@@ -12,6 +12,7 @@ import com.example.order.presentation.dto.StatusHistoryEntryResponse;
 import com.example.order.presentation.mapper.OrderPresentationMapper;
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
+import org.jboss.logging.MDC;
 import io.smallrye.mutiny.Multi;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -61,8 +62,8 @@ public class OrderResource {
                            @HeaderParam("Idempotency-Key") UUID idempotencyKey) {
         UUID customerId = UUID.fromString(jwt.getSubject());
         String username = jwt.getClaim("preferred_username");
+        Log.infof("Order received customerId=%s username=%s", customerId, username);
         UUID orderId = orchestrator.start(request, customerId, username, idempotencyKey);
-        Log.infof("Order accepted orderId=%s customerId=%s", orderId, customerId);
         Response.ResponseBuilder builder = Response.accepted()
                 .header("Location", "/orders/" + orderId);
         if (idempotencyKey != null) {
@@ -77,7 +78,8 @@ public class OrderResource {
             retryOn = OptimisticLockException.class,
             abortOn = NotFoundException.class)
     public Response cancel(@PathParam("id") UUID id) {
-        Log.infof("Order cancel requested orderId=%s", id);
+        MDC.put("orderId", id.toString());
+        Log.infof("Order cancel requested");
         Order existing = service.findById(new OrderId(id));
         if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(existing.getUserId())) {
             throw new ForbiddenException();

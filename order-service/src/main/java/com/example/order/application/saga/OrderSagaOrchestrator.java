@@ -18,11 +18,13 @@ import com.example.order.domain.valueobject.OrderId;
 import com.example.order.infrastructure.history.OrderStatusHistoryService;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
+import com.example.order.infrastructure.observability.OrderMetrics;
 import com.example.order.infrastructure.outbox.OutboxEventType;
 import com.example.order.infrastructure.outbox.OutboxService;
 import com.example.order.presentation.dto.CreateOrderRequest;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.jboss.logging.MDC;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
@@ -44,6 +46,7 @@ public class OrderSagaOrchestrator {
     @Inject OrderStatusHistoryService historyService;
     @Inject Event<OrderStatusChangedEvent> statusChangedEvent;
     @Inject Event<OrderSagaCompletedEvent> sagaCompletedEvent;
+    @Inject OrderMetrics metrics;
 
     @Transactional
     public UUID start(CreateOrderRequest request, UUID customerId, String username, UUID idempotencyKey) {
@@ -83,7 +86,9 @@ public class OrderSagaOrchestrator {
                     PaymentRequestEvent.of(order.getId().value(), customerId, total.amount(), correlationId)
             );
 
-            Log.infof("Saga started orderId=%s step=WAITING_PAYMENT total=%s", order.getId().value(), total.amount());
+            MDC.put("orderId", order.getId().value().toString());
+            metrics.orderCreated(order.getId().value());
+            Log.infof("Saga started step=WAITING_PAYMENT total=%s", total.amount());
             return order.getId().value();
 
         } catch (PersistenceException e) {
@@ -119,7 +124,7 @@ public class OrderSagaOrchestrator {
                     InventoryRequestEvent.of(event.orderId(), event.correlationId())
             );
 
-            Log.infof("Payment completed orderId=%s step=WAITING_INVENTORY", event.orderId());
+            Log.infof("Payment completed step=WAITING_INVENTORY");
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -140,8 +145,9 @@ public class OrderSagaOrchestrator {
             statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_FAILED));
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
             sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+            metrics.sagaCancelled(event.orderId());
 
-            Log.infof("Payment failed orderId=%s step=CANCELLED reason=%s", event.orderId(), event.reason());
+            Log.infof("Payment failed step=CANCELLED reason=%s", event.reason());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -162,8 +168,9 @@ public class OrderSagaOrchestrator {
             statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_APPROVED));
             saga.setStep(OrderSagaState.SagaStep.COMPLETED);
             sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+            metrics.sagaCompleted(event.orderId());
 
-            Log.infof("Inventory approved orderId=%s step=COMPLETED", event.orderId());
+            Log.infof("Inventory approved step=COMPLETED");
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -193,7 +200,7 @@ public class OrderSagaOrchestrator {
             saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
             saga.setDeadline(Instant.now().plusSeconds(30));
 
-            Log.infof("Inventory rejected orderId=%s step=WAITING_ROLLBACK reason=%s", event.orderId(), event.reason());
+            Log.infof("Inventory rejected step=WAITING_ROLLBACK reason=%s", event.reason());
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -214,8 +221,10 @@ public class OrderSagaOrchestrator {
             statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK));
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
             sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+            metrics.sagaCancelled(event.orderId());
+            metrics.sagaCompensated();
 
-            Log.infof("Payment rolled back orderId=%s step=CANCELLED", event.orderId());
+            Log.infof("Payment rolled back step=CANCELLED");
             inbox.markProcessed(event.eventId());
 
         } catch (Exception e) {
@@ -246,6 +255,7 @@ public class OrderSagaOrchestrator {
         } else {
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);
             sagaCompletedEvent.fire(new OrderSagaCompletedEvent(orderId.value()));
+            metrics.sagaCancelled(orderId.value());
         }
     }
 

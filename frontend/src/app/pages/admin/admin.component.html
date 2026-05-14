@@ -44,4 +44,35 @@
       </div>
     </div>
   </div>
+
+  <div class="card">
+    <p class="card-label">Failure simulation</p>
+    <p class="card-hint">Forces the consumer to throw on every message — triggers DLQ after 5 retries. Saga will time out.</p>
+    <div class="crash-row">
+      <div class="crash-item">
+        <span class="crash-label">Payment consumer</span>
+        <p-toggleButton
+          [ngModel]="paymentCrash()"
+          onLabel="ON"
+          offLabel="OFF"
+          [class]="paymentCrash() ? 'admin-toggle admin-toggle--crash' : 'admin-toggle'"
+          (onChange)="setPaymentCrash($event.checked)" />
+        @if (paymentCrash()) {
+          <span class="crash-badge">CRASH</span>
+        }
+      </div>
+      <div class="crash-item">
+        <span class="crash-label">Inventory consumer</span>
+        <p-toggleButton
+          [ngModel]="inventoryCrash()"
+          onLabel="ON"
+          offLabel="OFF"
+          [class]="inventoryCrash() ? 'admin-toggle admin-toggle--crash' : 'admin-toggle'"
+          (onChange)="setInventoryCrash($event.checked)" />
+        @if (inventoryCrash()) {
+          <span class="crash-badge">CRASH</span>
+        }
+      </div>
+    </div>
+  </div>
 </div>

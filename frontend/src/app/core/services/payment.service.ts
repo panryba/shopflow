@@ -15,4 +15,14 @@ export class PaymentService {
       responseType: 'text'
     });
   }
+
+  getCrash(): Observable<boolean> {
+    return this.http.get<boolean>('/api/payment/crash');
+  }
+
+  setCrash(enabled: boolean): Observable<string> {
+    return this.http.put(`/api/payment/crash?enabled=${enabled}`, null, {
+      responseType: 'text'
+    });
+  }
 }

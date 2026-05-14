@@ -43,4 +43,18 @@ public class InventoryModeResource {
         consumer.setDelaySeconds(seconds);
         return Response.ok("Inventory delay set to: " + seconds + "s").build();
     }
+
+    @GET
+    @Path("/crash")
+    @Produces(MediaType.APPLICATION_JSON)
+    public boolean getCrash() {
+        return consumer.isCrash();
+    }
+
+    @PUT
+    @Path("/crash")
+    public Response setCrash(@QueryParam("enabled") boolean enabled) {
+        consumer.setCrash(enabled);
+        return Response.ok("Inventory crash mode set to: " + enabled).build();
+    }
 }

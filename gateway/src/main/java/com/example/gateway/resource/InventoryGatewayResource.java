@@ -60,6 +60,21 @@ public class InventoryGatewayResource {
         return forward(inventoryServiceClient.setDelay(seconds));
     }
 
+    @GET
+    @Path("/crash")
+    @RolesAllowed("admin")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCrash() {
+        return forward(inventoryServiceClient.getCrash());
+    }
+
+    @PUT
+    @Path("/crash")
+    @RolesAllowed("admin")
+    public Response setCrash(@QueryParam("enabled") boolean enabled) {
+        return forward(inventoryServiceClient.setCrash(enabled));
+    }
+
     private Response forward(Response downstream) {
         String body = downstream.hasEntity()
                 ? downstream.readEntity(String.class)

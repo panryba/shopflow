@@ -37,6 +37,10 @@ public class OutboxRepository implements PanacheRepository<OutboxEventEntity> {
         return count("retryCount >= ?1 and processed = false", maxRetries);
     }
 
+    public long countPending(int maxRetries) {
+        return count("processed = false and retryCount < ?1", maxRetries);
+    }
+
     public void deleteProcessed(Instant cutoff) {
         delete("processed = true and processedAt < ?1", cutoff);
     }

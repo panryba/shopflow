@@ -1,5 +1,6 @@
 package com.example.order.infrastructure.inbox;
 
+import com.example.order.infrastructure.observability.OrderMetrics;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -15,6 +16,9 @@ public class InboxService {
     @Inject
     InboxRepository repository;
 
+    @Inject
+    OrderMetrics metrics;
+
     @Transactional
     public boolean receive(String eventId, String type) {
         try {
@@ -28,6 +32,7 @@ public class InboxService {
             );
             return true;
         } catch (ConstraintViolationException e) {
+            metrics.inboxDuplicate();
             return false;
         }
     }

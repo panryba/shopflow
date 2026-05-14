@@ -25,4 +25,14 @@ export class InventoryService {
       responseType: 'text'
     });
   }
+
+  getCrash(): Observable<boolean> {
+    return this.http.get<boolean>('/api/inventory/crash');
+  }
+
+  setCrash(enabled: boolean): Observable<string> {
+    return this.http.put(`/api/inventory/crash?enabled=${enabled}`, null, {
+      responseType: 'text'
+    });
+  }
 }

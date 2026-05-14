@@ -41,6 +41,21 @@ public class PaymentGatewayResource {
         return forward(paymentServiceClient.setDelay(seconds));
     }
 
+    @GET
+    @Path("/crash")
+    @RolesAllowed("admin")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCrash() {
+        return forward(paymentServiceClient.getCrash());
+    }
+
+    @PUT
+    @Path("/crash")
+    @RolesAllowed("admin")
+    public Response setCrash(@QueryParam("enabled") boolean enabled) {
+        return forward(paymentServiceClient.setCrash(enabled));
+    }
+
     private Response forward(Response downstream) {
         String body = downstream.hasEntity() ? downstream.readEntity(String.class) : null;
         Response.ResponseBuilder builder = Response.status(downstream.getStatus());

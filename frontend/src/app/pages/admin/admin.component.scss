@@ -52,3 +52,32 @@
   color: #374151;
   font-weight: 500;
 }
+
+.crash-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.crash-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.crash-label {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+  min-width: 160px;
+}
+
+.crash-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}

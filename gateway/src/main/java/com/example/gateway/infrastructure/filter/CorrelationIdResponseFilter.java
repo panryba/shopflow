@@ -26,7 +26,7 @@ public class CorrelationIdResponseFilter implements ContainerResponseFilter {
             responseContext.getHeaders().putSingle(HEADER, id);
         }
 
-        Log.infof("[corrId=%s] %s %s → %d", id, requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath(), responseContext.getStatus());
+        Log.infof("%s %s → %d", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath(), responseContext.getStatus());
         correlationIdProvider.clear();
     }
 }

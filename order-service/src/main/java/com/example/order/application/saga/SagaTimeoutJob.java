@@ -7,6 +7,7 @@ import com.example.order.domain.event.PaymentRollbackEvent;
 import com.example.order.domain.model.HistoryStatus;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
+import com.example.order.infrastructure.observability.OrderMetrics;
 import com.example.order.infrastructure.outbox.OutboxEventType;
 import com.example.order.infrastructure.outbox.OutboxService;
 import io.quarkus.scheduler.Scheduled;
@@ -25,6 +26,7 @@ public class SagaTimeoutJob {
     @Inject OutboxService outbox;
     @Inject Event<OrderStatusChangedEvent> statusChangedEvent;
     @Inject Event<OrderSagaCompletedEvent> sagaCompletedEvent;
+    @Inject OrderMetrics metrics;
 
     @Scheduled(every = "10s")
     @Transactional
@@ -44,6 +46,8 @@ public class SagaTimeoutJob {
                 statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED));
                 saga.setStep(OrderSagaState.SagaStep.CANCELLED);
                 sagaCompletedEvent.fire(new OrderSagaCompletedEvent(saga.getOrderId()));
+                metrics.sagaCancelled(saga.getOrderId());
+                metrics.sagaTimedOut();
             }
             case WAITING_INVENTORY -> {
                 orderService.cancel(orderId);
@@ -56,13 +60,16 @@ public class SagaTimeoutJob {
                 );
                 saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
                 saga.setDeadline(Instant.now().plusSeconds(30));
-                // No completion signal — onPaymentRolledBack() will fire it
+                metrics.sagaTimedOut();
+                // No completion signal — onPaymentRolledBack() will fire sagaCancelled + sagaCompensated
             }
             case WAITING_ROLLBACK -> {
                 orderService.cancel(orderId);
                 statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED));
                 saga.setStep(OrderSagaState.SagaStep.CANCELLED);
                 sagaCompletedEvent.fire(new OrderSagaCompletedEvent(saga.getOrderId()));
+                metrics.sagaCancelled(saga.getOrderId());
+                metrics.sagaTimedOut();
             }
             default -> { return; }
         }

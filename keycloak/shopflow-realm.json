@@ -1,6 +1,7 @@
 {
   "realm": "shopflow",
   "enabled": true,
+  "sslRequired": "none",
   "registrationAllowed": false,
   "clients": [
     {

@@ -29,4 +29,18 @@ public class PaymentDelayResource {
         consumer.setDelaySeconds(seconds);
         return Response.ok("Payment delay set to: " + seconds + "s").build();
     }
+
+    @GET
+    @Path("/crash")
+    @Produces(MediaType.APPLICATION_JSON)
+    public boolean getCrash() {
+        return consumer.isCrash();
+    }
+
+    @PUT
+    @Path("/crash")
+    public Response setCrash(@QueryParam("enabled") boolean enabled) {
+        consumer.setCrash(enabled);
+        return Response.ok("Payment crash mode set to: " + enabled).build();
+    }
 }

@@ -33,4 +33,17 @@ public interface PaymentServiceClient {
     @Retry(maxRetries = 3, delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response setDelay(@QueryParam("seconds") int seconds);
+
+    @GET
+    @Path("/crash")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 3, delay = 200)
+    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
+    Response getCrash();
+
+    @PUT
+    @Path("/crash")
+    @Retry(maxRetries = 3, delay = 200)
+    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
+    Response setCrash(@QueryParam("enabled") boolean enabled);
 }

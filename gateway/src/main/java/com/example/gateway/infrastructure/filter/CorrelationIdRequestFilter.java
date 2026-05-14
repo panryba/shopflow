@@ -30,6 +30,6 @@ public class CorrelationIdRequestFilter implements ContainerRequestFilter {
         }
 
         correlationIdProvider.set(id);
-        Log.infof("[corrId=%s] %s %s", id, requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath());
+        Log.infof("%s %s", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri().getPath());
     }
 }

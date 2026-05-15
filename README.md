@@ -294,7 +294,11 @@ ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/ope
   | jq -r .access_token)
 ```
 
-**Payment failure** — place an order where the total exceeds 300 (e.g. quantity 9 of any album).
+**Payment rejection** — disable payment acceptance, then place any order:
+```bash
+PUT http://localhost:8090/api/payment/mode?accept=false   # Authorization: Bearer $ADMIN_TOKEN
+PUT http://localhost:8090/api/payment/mode?accept=true    # restore
+```
 
 **Inventory rejection** — set inventory to reject mode, then place any order:
 ```bash
@@ -410,7 +414,7 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
 **Admin Panel** — three control cards, all require `admin` role:
-- **Order acceptance mode** — toggle inventory between accepting and rejecting all reservation requests
+- **Acceptance modes** — separate toggles for the inventory and payment consumers; disable either to force all requests to be rejected regardless of inventory state
 - **Saga step delay** — per-service delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s); slows the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo
 - **Failure simulation** — crash mode toggles for the payment and inventory consumers; when enabled the consumer throws on every message, triggering 5 retries and moving the message to the DLQ; the saga times out after 30 s and cancels the order; visible in the Grafana ERROR stream and DLQ event count panel
 

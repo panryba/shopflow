@@ -34,13 +34,13 @@ public class InventoryModeResource {
     @Path("/delay")
     @Produces(MediaType.APPLICATION_JSON)
     public int getDelay() {
-        return consumer.getDelaySeconds();
+        return consumer.getDelay();
     }
 
     @PUT
     @Path("/delay")
     public Response setDelay(@QueryParam("seconds") int seconds) {
-        consumer.setDelaySeconds(seconds);
+        consumer.setDelay(seconds);
         return Response.ok("Inventory delay set to: " + seconds + "s").build();
     }
 

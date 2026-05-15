@@ -31,11 +31,14 @@ public class InventoryEventConsumer {
     @Channel("inventory-rejected")
     Emitter<com.example.order.events.avro.InventoryRejectedEvent> rejectedEmitter;
 
+    @ConfigProperty(name = "app.inventory.accepted", defaultValue = "true")
+    boolean accepted;
+
+    @ConfigProperty(name = "app.inventory.delay", defaultValue = "0")
+    int delay;
+
     @ConfigProperty(name = "app.inventory.crash", defaultValue = "false")
     boolean crash;
-
-    private volatile boolean accepted = true;
-    private volatile int delaySeconds = 0;
 
     public boolean isAccepted() { return accepted; }
 
@@ -44,11 +47,11 @@ public class InventoryEventConsumer {
         this.accepted = accepted;
     }
 
-    public int getDelaySeconds() { return delaySeconds; }
+    public int getDelay() { return delay; }
 
-    public void setDelaySeconds(int seconds) {
-        Log.infof("Inventory delay changed: %ds", seconds);
-        this.delaySeconds = seconds;
+    public void setDelay(int delay) {
+        Log.infof("Inventory delay changed: %ds", delay);
+        this.delay = delay;
     }
 
     public boolean isCrash() { return crash; }
@@ -56,6 +59,10 @@ public class InventoryEventConsumer {
     public void setCrash(boolean crash) {
         Log.infof("Inventory crash mode changed: crash=%s", crash);
         this.crash = crash;
+    }
+
+    private void sleep() {
+        if (delay > 0) try { Thread.sleep(delay * 1000L); } catch (InterruptedException ignored) {}
     }
 
     @Incoming("inventory-request")
@@ -100,10 +107,6 @@ public class InventoryEventConsumer {
             MDC.remove("correlationId");
             MDC.remove("orderId");
         }
-    }
-
-    private void sleep() {
-        if (delaySeconds > 0) try { Thread.sleep(delaySeconds * 1000L); } catch (InterruptedException ignored) {}
     }
 
     private OutgoingKafkaRecordMetadata<String> key(String orderId, String correlationId) {

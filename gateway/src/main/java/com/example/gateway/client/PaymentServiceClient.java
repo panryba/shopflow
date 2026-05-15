@@ -22,6 +22,19 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 public interface PaymentServiceClient {
 
     @GET
+    @Path("/mode")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 3, delay = 200)
+    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
+    Response getMode();
+
+    @PUT
+    @Path("/mode")
+    @Retry(maxRetries = 3, delay = 200)
+    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
+    Response setMode(@QueryParam("accept") boolean accept);
+
+    @GET
     @Path("/delay")
     @Produces(MediaType.APPLICATION_JSON)
     @Retry(maxRetries = 3, delay = 200)

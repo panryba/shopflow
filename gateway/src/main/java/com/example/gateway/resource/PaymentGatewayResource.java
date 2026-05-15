@@ -27,6 +27,21 @@ public class PaymentGatewayResource {
     PaymentServiceClient paymentServiceClient;
 
     @GET
+    @Path("/mode")
+    @RolesAllowed("admin")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMode() {
+        return forward(paymentServiceClient.getMode());
+    }
+
+    @PUT
+    @Path("/mode")
+    @RolesAllowed("admin")
+    public Response setMode(@QueryParam("accept") boolean accept) {
+        return forward(paymentServiceClient.setMode(accept));
+    }
+
+    @GET
     @Path("/delay")
     @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)

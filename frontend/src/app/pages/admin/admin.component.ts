@@ -18,7 +18,8 @@ export class AdminComponent implements OnInit {
   private paymentService = inject(PaymentService);
   private messageService = inject(MessageService);
 
-  accept = signal(true);
+  inventoryAccept = signal(true);
+  paymentAccept = signal(true);
   paymentDelay = signal(0);
   inventoryDelay = signal(0);
   paymentCrash = signal(false);
@@ -34,8 +35,12 @@ export class AdminComponent implements OnInit {
 
   ngOnInit() {
     this.inventoryService.getMode().subscribe({
-      next: mode => this.accept.set(mode),
+      next: mode => this.inventoryAccept.set(mode),
       error: () => this.messageService.add({ severity: 'warn', summary: 'Could not read inventory mode' })
+    });
+    this.paymentService.getMode().subscribe({
+      next: mode => this.paymentAccept.set(mode),
+      error: () => {}
     });
     this.paymentService.getDelay().subscribe({
       next: d => this.paymentDelay.set(d),
@@ -55,16 +60,29 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  setMode(checked: boolean) {
+  setInventoryMode(checked: boolean) {
     this.inventoryService.setMode(checked).subscribe({
       next: () => {
-        this.accept.set(checked);
+        this.inventoryAccept.set(checked);
         this.messageService.add({
           severity: 'success',
           summary: checked ? 'Inventory now accepting orders' : 'Inventory now rejecting orders'
         });
       },
       error: () => this.messageService.add({ severity: 'error', summary: 'Failed to update inventory mode' })
+    });
+  }
+
+  setPaymentMode(checked: boolean) {
+    this.paymentService.setMode(checked).subscribe({
+      next: () => {
+        this.paymentAccept.set(checked);
+        this.messageService.add({
+          severity: 'success',
+          summary: checked ? 'Payment now accepting all payments' : 'Payment now rejecting all payments'
+        });
+      },
+      error: () => this.messageService.add({ severity: 'error', summary: 'Failed to update payment mode' })
     });
   }
 

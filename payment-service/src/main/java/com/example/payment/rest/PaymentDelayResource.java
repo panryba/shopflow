@@ -17,16 +17,30 @@ public class PaymentDelayResource {
     PaymentEventConsumer consumer;
 
     @GET
+    @Path("/mode")
+    @Produces(MediaType.APPLICATION_JSON)
+    public boolean getMode() {
+        return consumer.isAccepted();
+    }
+
+    @PUT
+    @Path("/mode")
+    public Response setMode(@QueryParam("accept") boolean accept) {
+        consumer.setAccepted(accept);
+        return Response.ok("Payment acceptance set to: " + accept).build();
+    }
+
+    @GET
     @Path("/delay")
     @Produces(MediaType.APPLICATION_JSON)
     public int getDelay() {
-        return consumer.getDelaySeconds();
+        return consumer.getDelay();
     }
 
     @PUT
     @Path("/delay")
     public Response setDelay(@QueryParam("seconds") int seconds) {
-        consumer.setDelaySeconds(seconds);
+        consumer.setDelay(seconds);
         return Response.ok("Payment delay set to: " + seconds + "s").build();
     }
 

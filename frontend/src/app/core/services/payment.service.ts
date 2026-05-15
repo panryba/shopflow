@@ -6,6 +6,16 @@ import { Observable } from 'rxjs';
 export class PaymentService {
   private http = inject(HttpClient);
 
+  getMode(): Observable<boolean> {
+    return this.http.get<boolean>('/api/payment/mode');
+  }
+
+  setMode(accept: boolean): Observable<string> {
+    return this.http.put(`/api/payment/mode?accept=${accept}`, null, {
+      responseType: 'text'
+    });
+  }
+
   getDelay(): Observable<number> {
     return this.http.get<number>('/api/payment/delay');
   }

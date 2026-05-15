@@ -13,7 +13,6 @@ import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Message;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
@@ -23,22 +22,30 @@ public class PaymentEventConsumer {
 
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
-    @ConfigProperty(name = "app.payment.failure-threshold")
-    double failureThreshold;
-
     @Inject
     PaymentMetrics metrics;
+
+    @ConfigProperty(name = "app.payment.accepted", defaultValue = "true")
+    boolean accepted;
+
+    @ConfigProperty(name = "app.payment.delay", defaultValue = "0")
+    int delay;
 
     @ConfigProperty(name = "app.payment.crash", defaultValue = "false")
     boolean crash;
 
-    private volatile int delaySeconds = 0;
+    public boolean isAccepted() { return accepted; }
 
-    public int getDelaySeconds() { return delaySeconds; }
+    public void setAccepted(boolean accepted) {
+        Log.infof("Payment mode changed: accept=%s", accepted);
+        this.accepted = accepted;
+    }
 
-    public void setDelaySeconds(int seconds) {
-        Log.infof("Payment delay changed: %ds", seconds);
-        this.delaySeconds = seconds;
+    public int getDelay() { return delay; }
+
+    public void setDelay(int delay) {
+        Log.infof("Payment delay changed: %ds", delay);
+        this.delay = delay;
     }
 
     public boolean isCrash() { return crash; }
@@ -49,7 +56,7 @@ public class PaymentEventConsumer {
     }
 
     private void sleep() {
-        if (delaySeconds > 0) try { Thread.sleep(delaySeconds * 1000L); } catch (InterruptedException ignored) {}
+        if (delay > 0) try { Thread.sleep(delay * 1000L); } catch (InterruptedException ignored) {}
     }
 
     @Channel("payment-completed")
@@ -68,13 +75,12 @@ public class PaymentEventConsumer {
             if (crash) throw new RuntimeException("Simulated consumer crash");
             sleep();
             var avro = message.getPayload();
-            boolean success = processPayment(avro.getAmount().toString());
             String orderId = avro.getOrderId().toString();
             String correlationId = avro.getCorrelationId().toString();
             MDC.put("correlationId", correlationId);
             MDC.put("orderId", orderId);
 
-            if (success) {
+            if (accepted) {
                 metrics.accepted();
                 Log.infof("Payment accepted");
                 successEmitter.send(Message.of(
@@ -135,10 +141,6 @@ public class PaymentEventConsumer {
             MDC.remove("correlationId");
             MDC.remove("orderId");
         }
-    }
-
-    private boolean processPayment(String amountStr) {
-        return new BigDecimal(amountStr).doubleValue() < failureThreshold;
     }
 
     private OutgoingKafkaRecordMetadata<String> key(String orderId, String correlationId) {

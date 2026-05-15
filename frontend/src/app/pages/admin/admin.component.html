@@ -2,26 +2,36 @@
   <h2 class="page-title">Admin Controls</h2>
 
   <div class="card">
-    <p class="card-label">Order acceptance mode</p>
-    <p-toggleButton
-      [ngModel]="accept()"
-      onLabel="Accept Orders"
-      offLabel="Rejecting Orders"
-      onIcon="pi pi-check"
-      offIcon="pi pi-times"
-      [class]="accept() ? 'admin-toggle admin-toggle--accept' : 'admin-toggle admin-toggle--reject'"
-      (onChange)="setMode($event.checked)" />
-    <p class="card-hint">
-      @if (accept()) {
-        Inventory will approve all reservation requests.
-      } @else {
-        Inventory will reject all reservation requests — orders will be cancelled.
-      }
-    </p>
+    <p class="card-label"><i class="pi pi-shield"></i> Acceptance modes</p>
+    <p class="card-hint">Disable to force all requests to be rejected, regardless of order amount or inventory state.</p>
+    <div class="crash-row">
+      <div class="crash-item">
+        <span class="crash-label">Payment</span>
+        <p-toggleButton
+          [ngModel]="paymentAccept()"
+          onLabel="Accept Payments"
+          offLabel="Rejecting Payments"
+          onIcon="pi pi-check"
+          offIcon="pi pi-times"
+          [class]="paymentAccept() ? 'admin-toggle admin-toggle--wide admin-toggle--accept' : 'admin-toggle admin-toggle--wide admin-toggle--reject'"
+          (onChange)="setPaymentMode($event.checked)" />
+      </div>
+      <div class="crash-item">
+        <span class="crash-label">Inventory</span>
+        <p-toggleButton
+          [ngModel]="inventoryAccept()"
+          onLabel="Accept Orders"
+          offLabel="Rejecting Orders"
+          onIcon="pi pi-check"
+          offIcon="pi pi-times"
+          [class]="inventoryAccept() ? 'admin-toggle admin-toggle--wide admin-toggle--accept' : 'admin-toggle admin-toggle--wide admin-toggle--reject'"
+          (onChange)="setInventoryMode($event.checked)" />
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <p class="card-label">Saga step delay</p>
+    <p class="card-label"><i class="pi pi-clock"></i> Saga step delay</p>
     <p class="card-hint">Slow the saga down to make each status transition visible in the live timeline.</p>
     <div class="delay-row">
       <div class="delay-item">
@@ -46,16 +56,18 @@
   </div>
 
   <div class="card">
-    <p class="card-label">Failure simulation</p>
+    <p class="card-label"><i class="pi pi-exclamation-triangle"></i> Failure simulations</p>
     <p class="card-hint">Forces the consumer to throw on every message — triggers DLQ after 5 retries. Saga will time out.</p>
     <div class="crash-row">
       <div class="crash-item">
         <span class="crash-label">Payment consumer</span>
         <p-toggleButton
           [ngModel]="paymentCrash()"
-          onLabel="ON"
-          offLabel="OFF"
-          [class]="paymentCrash() ? 'admin-toggle admin-toggle--crash' : 'admin-toggle'"
+          onLabel="OFF"
+          offLabel="ON"
+          onIcon="pi pi-times"
+          offIcon="pi pi-check"
+          [class]="paymentCrash() ? 'admin-toggle admin-toggle--reject' : 'admin-toggle admin-toggle--accept'"
           (onChange)="setPaymentCrash($event.checked)" />
         @if (paymentCrash()) {
           <span class="crash-badge">CRASH</span>
@@ -65,9 +77,11 @@
         <span class="crash-label">Inventory consumer</span>
         <p-toggleButton
           [ngModel]="inventoryCrash()"
-          onLabel="ON"
-          offLabel="OFF"
-          [class]="inventoryCrash() ? 'admin-toggle admin-toggle--crash' : 'admin-toggle'"
+          onLabel="OFF"
+          offLabel="ON"
+          onIcon="pi pi-times"
+          offIcon="pi pi-check"
+          [class]="inventoryCrash() ? 'admin-toggle admin-toggle--reject' : 'admin-toggle admin-toggle--accept'"
           (onChange)="setInventoryCrash($event.checked)" />
         @if (inventoryCrash()) {
           <span class="crash-badge">CRASH</span>

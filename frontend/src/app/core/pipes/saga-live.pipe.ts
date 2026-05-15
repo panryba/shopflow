@@ -7,6 +7,11 @@ const TERMINAL = new Set(['INVENTORY_APPROVED', 'PAYMENT_FAILED', 'PAYMENT_ROLLE
 export class SagaLivePipe implements PipeTransform {
   transform(history: StatusHistoryEntry[] | null | undefined): boolean {
     if (!history?.length) return true;
-    return !TERMINAL.has(history[history.length - 1].status);
+    const last = history[history.length - 1].status;
+    if (TERMINAL.has(last)) return false;
+    if (last === 'CANCELLED') {
+      return history.some(h => h.status === 'PAID');
+    }
+    return true;
   }
 }

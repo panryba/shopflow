@@ -5,7 +5,7 @@
 }
 
 .page-title {
-  margin-bottom: 2rem;
+  margin-bottom: 2.075rem;
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -14,7 +14,7 @@
   padding: 2rem;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #f8fafc;
+  background: #f9fafb;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -25,9 +25,17 @@
 }
 
 .card-label {
+  font-size: 1.1rem;
   font-weight: 500;
   color: #374151;
   margin: 0;
+
+  i {
+    font-size: 0.875rem;
+    margin-right: 0.4rem;
+    color: #3b82f6;
+    opacity: 1;
+  }
 }
 
 .card-hint {
@@ -70,6 +78,14 @@
   color: #374151;
   font-weight: 500;
   min-width: 160px;
+}
+
+::ng-deep .card p-select .p-select {
+  font-size: 0.8rem;
+
+  .p-select-label {
+    padding: 0.3rem 0.75rem;
+  }
 }
 
 .crash-badge {

@@ -52,6 +52,17 @@
   border-color: #484f5c !important;
 }
 
+::ng-deep .qty-control .p-button-secondary {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+
+  &:hover {
+    background: #cbd5e1 !important;
+    border-color: #b8c4d6 !important;
+  }
+}
+
 ::ng-deep .p-carousel-indicator.p-carousel-indicator-active button {
   background: #5a6270 !important;
 }

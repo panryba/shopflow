@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ShopFlow – Microservices Platform** — an online shop portfolio project demonstrating senior-level distributed systems patterns. Built with Quarkus 3.33, Java 25, Kafka, Avro, and PostgreSQL.
 
-Planned additions (not yet built): Docker Compose, API Gateway (Quarkus), Keycloak + JWT auth, Angular frontend, GitHub Actions CI/CD, Prometheus + Grafana observability.
+All planned features are complete: Docker Compose, API Gateway, Keycloak + JWT auth, Angular frontend, GitHub Actions CI/CD, Prometheus + Grafana + Loki observability, integration tests.
 
 ## Build & Run
 
@@ -23,7 +23,7 @@ Each service is an independent Maven project. Run from the service directory:
 ./mvnw package -Pnative
 ```
 
-No tests exist yet. When added, run with:
+Run tests with:
 ```bash
 ./mvnw test                        # all tests
 ./mvnw test -Dtest=MyTest          # single test

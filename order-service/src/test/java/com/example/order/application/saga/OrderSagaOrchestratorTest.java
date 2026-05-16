@@ -3,6 +3,7 @@ package com.example.order.application.saga;
 import com.example.order.application.port.input.OrderUseCase;
 import com.example.order.application.port.output.OrderRepository;
 import com.example.order.domain.event.InventoryApprovedEvent;
+import com.example.order.domain.event.InventoryRejectedEvent;
 import com.example.order.domain.event.OrderSagaCompletedEvent;
 import com.example.order.domain.event.OrderStatusChangedEvent;
 import com.example.order.domain.event.PaymentCompletedEvent;
@@ -120,6 +121,22 @@ class OrderSagaOrchestratorTest {
         verify(service).approveInventory(any(OrderId.class));
         verify(sagaCompletedEvent).fire(any());
         assertEquals(OrderSagaState.SagaStep.COMPLETED, saga.getStep());
+    }
+
+    @Test
+    void onInventoryRejected_cancelsOrderAndPublishesPaymentRollback() {
+        UUID orderId = UUID.randomUUID();
+        InventoryRejectedEvent event = InventoryRejectedEvent.of(orderId, "Out of stock", "corr-1");
+        OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_INVENTORY);
+
+        when(inbox.receive(event.eventId(), "InventoryRejected")).thenReturn(true);
+        when(sagaRepository.find(orderId)).thenReturn(saga);
+
+        orchestrator.onInventoryRejected(event);
+
+        verify(service).rejectInventory(any(OrderId.class));
+        verify(outbox).save(any(), any(), eq(OutboxEventType.PAYMENT_ROLLBACK), any());
+        assertEquals(OrderSagaState.SagaStep.WAITING_ROLLBACK, saga.getStep());
     }
 
     private OrderSagaState sagaInStep(UUID orderId, OrderSagaState.SagaStep step) {

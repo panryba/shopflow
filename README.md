@@ -463,7 +463,7 @@ Every push to `master` triggers the pipeline. Pull requests run build and test o
 ```mermaid
 graph LR
     subgraph parallel["Parallel"]
-        B["build-backend<br/>─────────────<br/>Java 25 + Maven cache<br/>mvn package -DskipTests<br/>mvn verify -DskipCompile<br/>(when tests exist)<br/>save to cache"]
+        B["build-backend<br/>─────────────<br/>Java 25 + Maven cache<br/>mvn package -DskipTests<br/>mvn test (all 3 services)<br/>save to cache"]
         F["build-frontend<br/>─────────────<br/>Node 24<br/>npm ci<br/>npm run build<br/>npm test<br/>(when tests exist)"]
     end
 
@@ -477,6 +477,42 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 
 ---
 
+## Tests
+
+```bash
+cd order-service   && ./mvnw test   # 43 tests
+cd payment-service && ./mvnw test   # 4 tests
+cd inventory-service && ./mvnw test # 3 tests
+```
+
+**order-service** — `@QuarkusTest` integration tests with Testcontainers (Postgres, Kafka, Apicurio Schema Registry spun up automatically):
+- Full saga flows: happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation
+- HTTP contract: input validation (400), unknown order (404)
+- Outbox publisher: retry logic, batch size limit, routing per event type
+
+**payment-service / inventory-service** — Mockito unit tests on the event consumers: accepted, rejected, crash mode (nack).
+
+### E2E Tests (Playwright)
+
+Three browser-level scenarios that test the full stack end to end. Require the complete stack to be running (`docker compose up -d`).
+
+```bash
+cd frontend
+npm run e2e         # headless
+npx playwright test --headed   # with browser visible
+npx playwright show-report     # open HTML report after a run
+```
+
+| # | Scenario | What it proves |
+|---|----------|----------------|
+| 1 | **Happy path** | Login → add item → place order → saga timeline builds (Order Created → Payment Confirmed → Inventory Reserved) → order appears in list with correct status |
+| 2 | **Failure path** | Admin enables inventory rejection → place order → compensation saga runs (Inventory Rejected → Payment Rolled Back) → status shows Inventory Rejected |
+| 3 | **Unauthenticated** | Navigating to `/orders` without a token redirects to Keycloak login page |
+
+> E2E tests are not wired into CI — they require the full infrastructure (Keycloak, Kafka, all services). Run locally after `docker compose up -d`.
+
+---
+
 ## Roadmap
 
 - [x] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Apicurio, PostgreSQL
@@ -485,4 +521,4 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
 - [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, Logs, System Health); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates at the gateway; Correlation ID distributed tracing across all services via dedicated Loki dashboard; consumer crash simulation with DLQ observability
-- [ ] **Integration Tests** — `@QuarkusTest` + Testcontainers, happy path saga E2E, inbox idempotency verification
+- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (Postgres, Kafka, Apicurio); order-service: 43 tests covering full saga flows (happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation), HTTP contract validation, OutboxPublisherJob retry/batch logic; payment-service and inventory-service: consumer unit tests (accepted, rejected, crash mode)

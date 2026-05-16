@@ -36,33 +36,18 @@ jobs:
         run: cd gateway && ./mvnw package -DskipTests
 
       - name: Test order-service
-        run: |
-          if find order-service/src/test -name "*.java" | grep -q .; then
-            cd order-service && ./mvnw verify -DskipCompile
-          else
-            echo "No tests found, skipping"
-          fi
+        run: cd order-service && ./mvnw test
 
       - name: Test payment-service
-        run: |
-          if find payment-service/src/test -name "*.java" | grep -q .; then
-            cd payment-service && ./mvnw verify -DskipCompile
-          else
-            echo "No tests found, skipping"
-          fi
+        run: cd payment-service && ./mvnw test
 
       - name: Test inventory-service
-        run: |
-          if find inventory-service/src/test -name "*.java" | grep -q .; then
-            cd inventory-service && ./mvnw verify -DskipCompile
-          else
-            echo "No tests found, skipping"
-          fi
+        run: cd inventory-service && ./mvnw test
 
       - name: Test gateway
         run: |
           if find gateway/src/test -name "*.java" | grep -q .; then
-            cd gateway && ./mvnw verify -DskipCompile
+            cd gateway && ./mvnw test
           else
             echo "No tests found, skipping"
           fi

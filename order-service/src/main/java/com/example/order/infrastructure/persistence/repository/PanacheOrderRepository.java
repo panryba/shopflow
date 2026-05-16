@@ -38,7 +38,7 @@ public class PanacheOrderRepository implements OrderRepository, PanacheRepositor
 
     @Override
     public List<Order> findByUserId(UUID userId) {
-        return find("userId", userId).stream().map(mapper::toDomain).toList();
+        return find("userId", userId).list().stream().map(mapper::toDomain).toList();
     }
 
     @Override

@@ -4,7 +4,7 @@ import com.example.order.infrastructure.observability.OrderMetrics;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.validation.ConstraintViolationException;
+import jakarta.persistence.PersistenceException;
 
 import java.time.Instant;
 
@@ -19,7 +19,7 @@ public class InboxService {
     @Inject
     OrderMetrics metrics;
 
-    @Transactional
+    @Transactional(REQUIRES_NEW)
     public boolean receive(String eventId, String type) {
         try {
             repository.persist(
@@ -30,8 +30,9 @@ public class InboxService {
                             .status(InboxEvent.Status.RECEIVED)
                             .build()
             );
+            repository.flush();
             return true;
-        } catch (ConstraintViolationException e) {
+        } catch (PersistenceException e) {
             metrics.inboxDuplicate();
             return false;
         }

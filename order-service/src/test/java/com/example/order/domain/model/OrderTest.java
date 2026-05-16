@@ -106,4 +106,11 @@ class OrderTest {
     void approveInventoryFromWrongStateThrows() {
         assertThrows(IllegalStateException.class, () -> order.approveInventory());
     }
+
+    @Test
+    void approveInventoryOnCancelledOrderIsNoOp() {
+        order.cancel();
+        order.approveInventory();
+        assertEquals(OrderStatus.CANCELLED, order.getStatus());
+    }
 }

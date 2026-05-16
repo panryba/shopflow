@@ -14,6 +14,7 @@ import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 import org.jboss.logging.MDC;
 import io.smallrye.mutiny.Multi;
+import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.OptimisticLockException;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Path("/orders")
+@Authenticated
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class OrderResource {

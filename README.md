@@ -480,7 +480,7 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway
 ## Tests
 
 ```bash
-cd order-service   && ./mvnw test   # 43 tests
+cd order-service   && ./mvnw test   # 46 tests
 cd payment-service && ./mvnw test   # 4 tests
 cd inventory-service && ./mvnw test # 3 tests
 ```
@@ -521,4 +521,4 @@ npx playwright show-report     # open HTML report after a run
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
 - [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, Logs, System Health); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates at the gateway; Correlation ID distributed tracing across all services via dedicated Loki dashboard; consumer crash simulation with DLQ observability
-- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (Postgres, Kafka, Apicurio); order-service: 43 tests covering full saga flows (happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation), HTTP contract validation, OutboxPublisherJob retry/batch logic; payment-service and inventory-service: consumer unit tests (accepted, rejected, crash mode)
+- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (Postgres, Kafka, Apicurio); order-service: 46 tests covering full saga flows (happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation), HTTP contract validation, OutboxPublisherJob retry/batch logic; payment-service and inventory-service: consumer unit tests (accepted, rejected, crash mode)

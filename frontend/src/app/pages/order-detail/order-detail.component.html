@@ -9,11 +9,6 @@
       </div>
       <div class="header-right">
         <p-tag [value]="order()!.status | statusLabel" [severity]="getSeverity(order()!.status)" />
-        @if (corrId()) {
-          <a [href]="grafanaUrl()!" target="_blank" rel="noopener" class="grafana-link">
-            <i class="pi pi-chart-line"></i> View logs
-          </a>
-        }
       </div>
     </div>
 
@@ -43,6 +38,14 @@
         </p-timeline>
       }
     </div>
+
+    @if (corrId()) {
+      <div class="grafana-row">
+        <a [href]="grafanaUrl()!" target="_blank" rel="noopener" class="grafana-link">
+          <i class="pi pi-chart-line"></i> View logs in Grafana
+        </a>
+      </div>
+    }
 
     <div class="section">
       <h3>Items</h3>

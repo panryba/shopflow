@@ -12,6 +12,25 @@
       </div>
     </div>
 
+    @if (corrId()) {
+      <details class="debug-section">
+        <summary class="debug-summary">Debug info</summary>
+        <div class="debug-body">
+          <div class="debug-row">
+            <span class="debug-label">Correlation ID</span>
+            <span class="mono debug-value">{{ corrId() }}</span>
+            <button class="copy-btn" (click)="copyCorrelationId()">
+              <i [class]="copied() ? 'pi pi-check' : 'pi pi-copy'"></i>
+              {{ copied() ? 'Copied' : 'Copy' }}
+            </button>
+          </div>
+          <a [href]="grafanaUrl()!" target="_blank" rel="noopener" class="grafana-link">
+            <i class="pi pi-chart-line"></i> View logs in Grafana
+          </a>
+        </div>
+      </details>
+    }
+
     <div class="section">
       <div class="section-header">
         <h3>Saga Timeline</h3>

@@ -42,6 +42,19 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   order = signal<OrderResponse | null>(null);
   loading = signal(true);
   isWatching = signal(false);
+  corrId = signal<string | undefined>(undefined);
+  copied = signal(false);
+
+  grafanaUrl = computed(() => {
+    const id = this.corrId();
+    if (!id) return null;
+    const config = {
+      datasource: 'loki',
+      queries: [{ refId: 'A', expr: `{} |= "corrId=${id}"` }],
+      range: { from: 'now-1h', to: 'now' }
+    };
+    return `http://localhost:3000/explore?orgId=1&left=${encodeURIComponent(JSON.stringify(config))}`;
+  });
 
   private sub?: Subscription;
 
@@ -54,6 +67,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    this.corrId.set(history.state?.corrId);
     const id = this.route.snapshot.paramMap.get('id')!;
     this.sub = this.orderService.watchOrder(id).subscribe({
       next: order => {
@@ -71,6 +85,15 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.sub?.unsubscribe();
+  }
+
+  copyCorrelationId(): void {
+    const id = this.corrId();
+    if (!id) return;
+    navigator.clipboard.writeText(id).then(() => {
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 1500);
+    });
   }
 
   productName(id: string): string {

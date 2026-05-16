@@ -23,17 +23,31 @@ async function navigateToAdmin(page: Page) {
 
 test.describe('ShopFlow E2E', () => {
 
-  // Guard against dirty state left by a previous run where test 2 failed before cleanup.
+  // Guard against dirty state left by a previous run.
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
     await login(page, 'admin', 'password');
     await navigateToAdmin(page);
+
+    // Reset inventory acceptance mode if rejecting
     const acceptanceCard = page.locator('.card').filter({ hasText: 'Acceptance modes' });
     const rejectingBtn = acceptanceCard.getByRole('button', { name: 'Rejecting Orders' });
     if (await rejectingBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await rejectingBtn.click();
       await expect(acceptanceCard.getByRole('button', { name: 'Accept Orders' })).toBeVisible({ timeout: 3_000 });
     }
+
+    // Reset crash modes if enabled
+    const crashCard = page.locator('.card').filter({ hasText: 'Failure simulations' });
+    const inventoryItem = crashCard.locator('.crash-item').filter({ hasText: 'Inventory consumer' });
+    if (await inventoryItem.locator('.crash-badge').isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await inventoryItem.getByRole('button', { name: 'OFF' }).click();
+    }
+    const paymentItem = crashCard.locator('.crash-item').filter({ hasText: 'Payment consumer' });
+    if (await paymentItem.locator('.crash-badge').isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await paymentItem.getByRole('button', { name: 'OFF' }).click();
+    }
+
     await page.close();
   });
 

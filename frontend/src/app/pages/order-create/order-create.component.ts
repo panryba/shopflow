@@ -49,9 +49,10 @@ export class OrderCreateComponent {
     this.orderService.create({ items }).subscribe({
       next: response => {
         const orderId = response.headers.get('Location')?.split('/').pop();
+        const corrId = response.headers.get('X-Correlation-ID') ?? undefined;
         if (orderId) {
           this.cartService.clear();
-          this.router.navigate(['/orders', orderId]);
+          this.router.navigate(['/orders', orderId], { state: { corrId } });
         }
       },
       error: () => this.messageService.add({ severity: 'error', summary: 'Failed to submit order' })

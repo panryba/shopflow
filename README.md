@@ -2,7 +2,14 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns: **Hexagonal Architecture**, **Domain-Driven Design**, **Saga Orchestrator**, **Transactional Outbox**, **Idempotent Consumer (Inbox)**, **Dead Letter Queue**, **Saga Timeout**, **Avro + Schema Registry**, **Partition Key Consistency**, **Correlation ID Tracing**, **Concurrency Control**, **Idempotent Order Creation**, **API Gateway**, **Fault Tolerance**, **JWT Authentication**, and **Observability**.
+A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns.
+
+| | |
+|---|---|
+| **Architecture** | Hexagonal Architecture, Domain-Driven Design, API Gateway, JWT Authentication |
+| **Reliability** | Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Idempotent Order Creation, Dead Letter Queue, Saga Timeout, Fault Tolerance, Concurrency Control |
+| **Messaging** | Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing |
+| **Observability** | Micrometer, Prometheus, Loki, Grafana |
 
 ---
 

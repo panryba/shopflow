@@ -48,12 +48,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   grafanaUrl = computed(() => {
     const id = this.corrId();
     if (!id) return null;
-    const config = {
-      datasource: 'loki',
-      queries: [{ refId: 'A', expr: `{} |= "corrId=${id}"` }],
-      range: { from: 'now-1h', to: 'now' }
-    };
-    return `http://localhost:3000/explore?orgId=1&left=${encodeURIComponent(JSON.stringify(config))}`;
+    return `http://localhost:3000/d/shopflow-logs?var-corrId=${encodeURIComponent(id)}&from=now-1h&to=now`;
   });
 
   private sub?: Subscription;

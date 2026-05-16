@@ -43,7 +43,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   loading = signal(true);
   isWatching = signal(false);
   corrId = signal<string | undefined>(undefined);
-  copied = signal(false);
 
   grafanaUrl = computed(() => {
     const id = this.corrId();
@@ -80,15 +79,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.sub?.unsubscribe();
-  }
-
-  copyCorrelationId(): void {
-    const id = this.corrId();
-    if (!id) return;
-    navigator.clipboard.writeText(id).then(() => {
-      this.copied.set(true);
-      setTimeout(() => this.copied.set(false), 1500);
-    });
   }
 
   productName(id: string): string {

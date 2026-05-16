@@ -5,6 +5,7 @@ export default defineConfig({
   fullyParallel: false,   // tests share backend state (admin toggles)
   retries: 0,
   timeout: 90_000,
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4200',
     headless: true,

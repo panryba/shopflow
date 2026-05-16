@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
-A production-shaped online shop built as a microservices portfolio project, demonstrating senior-level distributed systems patterns.
+A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
 
 | | |
 |---|---|
@@ -10,6 +10,25 @@ A production-shaped online shop built as a microservices portfolio project, demo
 | **Reliability** | Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Idempotent Order Creation, Dead Letter Queue, Saga Timeout, Fault Tolerance, Concurrency Control |
 | **Messaging** | Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing |
 | **Observability** | Micrometer, Prometheus, Loki, Grafana |
+
+### Create Order Flow
+
+```
+Angular Frontend
+       │
+       ▼
+API Gateway → Keycloak
+       │
+       ▼
+Order Service → PostgreSQL
+       │
+       ▼
+     Kafka
+  ┌────┴────┐
+  ▼         ▼
+Payment  Inventory
+Service  Service
+```
 
 ---
 
@@ -122,7 +141,7 @@ The `order-service` domain layer models the business explicitly: `Order` is the 
 The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
 
 ### Transactional Outbox
-The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled `OutboxPublisherJob` reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern).
+The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern).
 
 ### Idempotent Consumer (Inbox)
 The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
@@ -131,10 +150,10 @@ The system operates under at-least-once delivery semantics — all consumers mus
 Each consumer channel is configured with `failure-strategy=dead-letter-queue`. Retries are handled via application-level `@Retry` and Kafka redelivery. After repeated failures, a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
 
 ### Saga Timeout
-A `SagaTimeoutJob` runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
+A scheduled timeout process runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
 
 ### Avro + Schema Registry
-All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. Each service owns its schema files under `src/main/avro/consumed/` and `src/main/avro/produced/`. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
+All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
 
 ### Partition Key Consistency
 Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions.
@@ -143,81 +162,16 @@ Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all me
 Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events.
 
 ### Concurrency Control
-All REST handlers and Kafka consumers in the `order-service` are annotated with `@Retry(retryOn = OptimisticLockException.class)`. If two concurrent requests attempt to update the same order or saga row simultaneously, JPA throws an `OptimisticLockException` and the operation is retried automatically with jitter. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
+Concurrent updates are retried automatically after optimistic locking conflicts. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
 
 ### Idempotent Order Creation
-`POST /orders` accepts an optional `Idempotency-Key: <uuid>` header. The client generates the UUID before sending and retries safely if the network times out — the order-service checks whether that key was already processed and returns the existing order ID instead of creating a duplicate. The key is stored as a unique-constrained column on the `orders` table. A concurrent duplicate (race condition where two requests pass the pre-check simultaneously) is caught via `PersistenceException` cause-chain inspection, with the fallback lookup running in a separate `REQUIRES_NEW` transaction to bypass the poisoned outer transaction. The key is echoed back in the response `Idempotency-Key` header.
+`POST /orders` accepts an optional `Idempotency-Key: <uuid>` header. The client generates the UUID before sending and retries safely if the network times out — the order-service checks whether that key was already processed and returns the existing order ID instead of creating a duplicate. The key is stored as a unique-constrained column on the `orders` table. Concurrent duplicate requests are resolved safely using a database unique constraint with fallback lookup logic. The key is echoed back in the response `Idempotency-Key` header.
 
 ### API Gateway
 A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Downstream responses are rebuilt before returning to the client — hop-by-hop headers (`transfer-encoding`, `content-length`, `host`, `connection`) are stripped to prevent HTTP framing conflicts. Unreachable downstream services map to `502 Bad Gateway`; open circuit returns `503 Service Unavailable`; 4xx errors from downstream pass through with their original status code.
 
 ### Fault Tolerance
 All gateway-to-downstream calls are protected by MicroProfile Fault Tolerance. Read and idempotent write operations use `@Retry(maxRetries = 3, delay = 200ms)` — retries abort immediately on `WebApplicationException` so 4xx responses are never retried. POST (create order) gets no retry as the operation is not idempotent. All operations are protected by `@CircuitBreaker(requestVolumeThreshold = 10, failureRatio = 0.5, delay = 5s, successThreshold = 2)` — after 50% failures across 10 requests the circuit opens for 5 seconds; once open, requests fail fast with `503 SERVICE_UNAVAILABLE` and a structured `GatewayErrorResponse` without hitting the downstream service. REST clients are configured with a 1s connect timeout and 3s read timeout to bound worst-case latency on the local/Docker network.
-
-### Observability
-Prometheus metrics are exposed on `/q/metrics` by all four services (including the gateway) via Micrometer. Grafana Alloy ships all Docker container logs to Loki. Grafana is provisioned automatically with both datasources and four pre-built dashboards — no manual setup required.
-
-**Custom metrics (order-service):**
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `orders_created_total` | Counter | Orders accepted by the saga |
-| `sagas_completed_total{outcome=COMPLETED}` | Counter | Sagas reaching a successful terminal state |
-| `sagas_completed_total{outcome=CANCELLED}` | Counter | Sagas reaching any failed terminal state |
-| `sagas_compensated_total` | Counter | Subset of failed: sagas where payment was rolled back |
-| `sagas_timed_out_total` | Counter | Subset of failed: sagas cancelled due to step deadline exceeded |
-| `saga_duration_seconds{outcome}` | Timer | Time from order creation to saga completion; `outcome` = `COMPLETED` or `CANCELLED` |
-| `outbox_pending` | Gauge | Unsent outbox rows waiting to be published; updated every 15 s |
-| `inbox_duplicates_total` | Counter | Duplicate inbox events silently rejected |
-
-**Custom metrics (payment-service):**
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `payments_processed_total{result}` | Counter | Payments accepted or rejected |
-| `payment_rollbacks_total` | Counter | Payment rollbacks processed |
-
-**Custom metrics (inventory-service):**
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `inventory_requests_total{result}` | Counter | Inventory checks approved or rejected |
-
-Four Grafana dashboards are provisioned automatically:
-
-- **ShopFlow — 1. Saga & Orders** — saga counter stat tiles (orders created, completed, failed, compensated, timed out); saga health time series (started vs completed vs failed trend, success rate %); average saga duration by outcome and order creation rate (increase over 5 min)
-- **ShopFlow — 2. Kafka & Messaging** — stat tiles for payments and inventory accepted/rejected; payment acceptance rate % and inventory approval rate % time series
-- **ShopFlow — 3. Logs (Loki)** — distributed trace panel (paste a Correlation ID to see the full saga flow across all services in chronological order); live orchestrator and gateway log streams; ERROR stream with per-service error count barchart; log volume per service
-- **ShopFlow — 4. System Health** — infrastructure health (outbox pending lag, inbox duplicates blocked, DLQ event counts via kafka-exporter); JVM heap usage (used vs max), GC pause rate, HTTP request rate and HTTP 5xx error rate at the gateway
-
-**Observability stack:**
-
-| Tool | Port | Role |
-|------|------|------|
-| Prometheus | 9090 | Scrapes `/q/metrics` from all four services (order, payment, inventory, gateway) every 5 s |
-| Loki | 3100 | Log aggregation store — receives logs shipped by Alloy |
-| Alloy | — | Reads Docker container logs via Docker socket and ships to Loki |
-| Kafka Exporter | 9308 | Exposes Kafka topic offsets (including DLQ topics) as Prometheus metrics |
-| Grafana | 3000 | Pre-provisioned with Prometheus + Loki datasources and four ShopFlow dashboards |
-
-**Log querying with Loki:** the **ShopFlow — Logs (Loki)** dashboard has a Correlation ID input at the top — paste the `X-Correlation-ID` value from any response header and instantly see the full distributed saga flow across all services in chronological order. No terminal windows, no manual grepping.
-
-For ad-hoc queries open **Grafana → Explore** and use LogQL directly:
-
-```logql
-# trace full request lifecycle including pre-order gateway logs
-{service=~"order-service|payment-service|inventory-service|gateway"} |= "corrId=<uuid>"
-
-# trace a specific order across all services
-{service=~"order-service|payment-service|inventory-service"} |= "orderId=<uuid>"
-```
-
-### JWT Authentication
-JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
-
-The raw `Authorization: Bearer <token>` header is forwarded downstream via a `ClientRequestFilter` (`OutgoingJwtFilter`) so services can read user identity without performing OIDC validation against Keycloak again. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires role `admin`. The `order-service` extracts customer identity directly from the forwarded token — `customerId` is never trusted from the request body.
-
-In the current Keycloak configuration, the `sub` claim is a UUID and is used as the authoritative customer identity for every order. Keycloak roles are mapped via `realm_access.roles` (`smallrye.jwt.path.groups=realm_access/roles`). The `preferred_username` claim is written to `orders.user_name` at creation time to avoid cross-service user lookups — there is no separate users table.
 
 ---
 
@@ -285,17 +239,13 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
   WAITING_INVENTORY → cancel order + payment-rollback
 ```
 
-### Simulating Failures
+## Simulating Failures
 
-All endpoints require a valid JWT. Obtain a token first:
+All failure scenarios can be toggled from the **Admin Panel** in the frontend (`/admin`, requires admin role).
+
+To trigger failures via API directly, obtain an admin token first:
 
 ```bash
-# user1 token (role: user) — for order endpoints
-TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
-  -d "grant_type=password&client_id=shopflow-app&username=user1&password=password" \
-  | jq -r .access_token)
-
-# admin token (role: admin) — required for inventory mode toggle
 ADMIN_TOKEN=$(curl -s -X POST http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
   -d "grant_type=password&client_id=shopflow-app&username=admin&password=password" \
   | jq -r .access_token)
@@ -325,77 +275,45 @@ PUT http://localhost:8090/api/inventory/crash?enabled=true  # Authorization: Bea
 PUT http://localhost:8090/api/inventory/crash?enabled=false # restore
 ```
 
-All failure scenarios can also be toggled from the **Admin Panel** in the frontend without curl.
+---
+
+## JWT Authentication
+
+JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
+
+The raw `Authorization: Bearer <token>` header is forwarded downstream so services can extract user identity without re-validating the token against Keycloak. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires admin role.
+
+The order-service derives customer identity directly from the JWT subject claim — `customerId` is never trusted from the request body. The `sub` claim is a UUID and serves as the authoritative customer identifier for every order. The `preferred_username` claim is persisted with the order at creation time to avoid cross-service user lookups.
 
 ---
 
 ## API Reference
 
-All endpoints are served by the **API Gateway** at `http://localhost:8090/api`.
+All endpoints served by the API Gateway at `http://localhost:8090/api`.  
+Auth: `Bearer` token required. Order endpoints: any authenticated user. Payment and inventory controls (mode, crash, delay): `admin` role only.
 
-All endpoints require a `Bearer` token in the `Authorization` header. Order endpoints require role `user` or `admin`; inventory mode toggle requires role `admin`.
+Full interactive contract: **http://localhost:8090/q/swagger-ui**
 
-Swagger UI available at `http://localhost:8090/q/swagger-ui`.
-
-### POST /api/orders
-Place a new order. Starts the saga asynchronously.
-
-**Request**
-```json
-{
-  "items": [
-    { "productId": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "quantity": 2, "price": 74.99 }
-  ]
-}
-```
-
-> `customerId` is not accepted from the client — it is extracted from the `sub` claim of the forwarded JWT token.
-
-> `price` per item is accepted from the client as a pragmatic simplification — in a production system it would be fetched from a product catalog service and never trusted from the client.
-
-**Response** `202 Accepted`
-```
-Location: /orders/{orderId}
-```
-
-### GET /api/orders
-Returns all orders.
-
-### GET /api/orders/{id}
-Returns a single order.
-
-**Response** `200 OK`
-```json
-{
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "username": "user1",
-  "status": "INVENTORY_APPROVED",
-  "items": [
-    { "productId": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "quantity": 2, "price": 74.99 }
-  ],
-  "total": 149.98,
-  "history": [
-    { "status": "CREATED", "occurredAt": "2025-01-01T10:00:00Z" },
-    { "status": "PAID", "occurredAt": "2025-01-01T10:00:01Z" },
-    { "status": "INVENTORY_APPROVED", "occurredAt": "2025-01-01T10:00:02Z" }
-  ],
-  "createdAt": "2025-01-01T10:00:00Z"
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/orders` | Place a new order — starts the saga asynchronously, returns `202 Accepted` with `Location` header |
+| GET | `/api/orders` | List orders — users see own orders, admins see all |
+| GET | `/api/orders/{id}` | Single order with full status history |
+| GET | `/api/orders/{id}/events` | SSE stream — pushes status transitions, closed on terminal state |
+| PUT | `/api/orders/{id}/cancel` | Cancel order — triggers `payment-rollback` if payment already charged |
+| | **Admin controls** | |
+| PUT | `/api/payment/mode` | Toggle payment acceptance (`?accept=false`) |
+| PUT | `/api/inventory/mode` | Toggle inventory acceptance (`?accept=false`) |
+| PUT | `/api/payment/crash` | Enable payment consumer crash mode (`?enabled=true`) |
+| PUT | `/api/inventory/crash` | Enable inventory consumer crash mode (`?enabled=true`) |
+| PUT | `/api/payment/delay` | Slow down payment consumer (`?seconds=0\|2\|4\|6\|8`) |
+| PUT | `/api/inventory/delay` | Slow down inventory consumer (`?seconds=0\|2\|4\|6\|8`) |
 
 **Order statuses:** `CREATED` → `PAID` → `INVENTORY_APPROVED` (success) / `PAYMENT_FAILED` / `INVENTORY_REJECTED` → `CANCELLED`
 
-The `history` array records every status transition with a timestamp, enabling the saga timeline view in the frontend.
+> `customerId` is extracted from the JWT `sub` claim — never trusted from the request body.
 
-### GET /api/orders/{id}/events
-SSE stream of status updates for a single order. The server pushes a plain-text status name (`PAID`, `INVENTORY_APPROVED`, etc.) on every saga transition and closes the stream when the saga completes. Requires the same ownership or admin role check as `GET /api/orders/{id}`.
-
-**Response** `200 OK` — `text/event-stream`
-
-### PUT /api/orders/{id}/cancel
-Manually cancel an order. If the order is in `WAITING_INVENTORY` state (payment already charged), the cancellation triggers a `payment-rollback` event and the saga completes asynchronously with `PAYMENT_ROLLED_BACK` as the final history entry. For orders still `WAITING_PAYMENT`, the cancellation is immediate with no compensation needed.
-
-**Response** `200 OK` — returns the updated order with `status: CANCELLED`
+> `price` is accepted from the client as a pragmatic simplification — in production it would come from a product catalog service.
 
 ---
 
@@ -412,11 +330,11 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 | New Order | `/orders/new` | all authenticated users |
 | Admin Panel | `/admin` | admin role only |
 
-**Authentication** — Login is handled by Keycloak via the OIDC Authorization Code flow (`angular-oauth2-oidc`). The JWT access token is attached to every API request by an HTTP interceptor. Unauthenticated users are redirected to the Keycloak login page; users without the `admin` role are redirected away from the admin route.
+**Authentication** — Login via Keycloak OIDC Authorization Code flow. The JWT access token is attached to every API request automatically. Unauthenticated users are redirected to the Keycloak login page; users without admin role are redirected away from the admin route.
 
 **Order List** — paginated table with Order ID (truncated to 13 chars, full UUID on hover), customer username, status badge, creation date, item count, and total. All users see all their own orders; admins see all orders from all users.
 
-**Order Detail** — full saga timeline (one entry per status transition with icon, colour, and timestamp), items table with album artwork, and a "Live" indicator while the saga is still in progress. The detail page opens an SSE connection to `GET /api/orders/{id}/events` and re-fetches the order on every status push. The stream is closed by the server when the saga reaches a terminal state (`INVENTORY_APPROVED`, `PAYMENT_FAILED`, `CANCELLED`, `PAYMENT_ROLLED_BACK`). Because `EventSource` cannot set `Authorization` headers, the SSE connection is opened with the `fetch()` API using an `AbortController` for cleanup.
+**Order Detail** — full saga timeline (one entry per status transition with icon, colour, and timestamp), items table with album artwork, and a "Live" indicator while the saga is still in progress. Status updates are streamed via SSE and the stream closes automatically when the saga reaches a terminal state.
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
@@ -425,7 +343,7 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 - **Saga step delay** — per-service delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s); slows the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo
 - **Failure simulation** — crash mode toggles for the payment and inventory consumers; when enabled the consumer throws on every message, triggering 5 retries and moving the message to the DLQ; the saga times out after 30 s and cancels the order; visible in the Grafana ERROR stream and DLQ event count panel
 
-**UI library** — PrimeNG (Table, Tag, Timeline, Toast, Button, Toolbar, ToggleButton, Select, Tooltip).
+**UI library** — PrimeNG.
 
 ---
 
@@ -460,6 +378,35 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
+
+---
+
+## Observability
+
+All services expose Prometheus metrics via Micrometer on `/q/metrics`. Grafana Alloy ships Docker container logs to Loki. Grafana is provisioned automatically with Prometheus and Loki datasources plus four pre-built dashboards.
+
+The observability stack focuses on business-level saga visibility in addition to infrastructure and JVM metrics.
+
+Custom metrics cover saga outcomes (created, completed, failed, compensated, timed out), saga duration by outcome, outbox pending lag, inbox duplicates blocked, and payment and inventory acceptance rates.
+
+Four Grafana dashboards are provisioned automatically:
+
+- **Saga & Orders** — saga counter tiles, health time series (started vs completed vs failed), success rate %, average saga duration by outcome and order creation rate (increase over 5 min)
+- **Kafka & Messaging** — payment and inventory acceptance/rejection counters and rate trends
+- **Logs (Loki)** — correlation-ID-based distributed trace panel, live orchestrator and gateway log streams, ERROR stream per service, and per-service log volume
+- **System Health** — outbox pending lag, inbox duplicates, DLQ event counts, JVM heap, GC pause rate, HTTP request and error rates at the gateway
+
+**Correlation ID tracing** — the Logs dashboard accepts a Correlation ID and instantly shows the full saga flow across all services in chronological order. The Order Detail page links directly to Grafana pre-filtered to that correlation ID.
+
+Observability stack:
+
+| Tool | Port | Role |
+|------|------|------|
+| Prometheus | 9090 | Scrapes Micrometer metrics from all services every 5 s |
+| Loki | 3100 | Centralized log aggregation |
+| Alloy | — | Ships Docker container logs to Loki |
+| Kafka Exporter | 9308 | Exposes Kafka topic offsets and DLQ topics as Prometheus metrics |
+| Grafana | 3000 | Pre-provisioned with Prometheus + Loki datasources and four ShopFlow dashboards |
 
 ---
 
@@ -522,10 +469,10 @@ npx playwright show-report     # open HTML report after a run
 
 ## Roadmap
 
-- [x] **Docker Compose** — single `docker-compose up` to run all services, Kafka, Apicurio, PostgreSQL
+- [x] **Docker Compose** — single `docker compose up` to run all services, Kafka, Apicurio, PostgreSQL
 - [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
-- [x] **Angular Frontend** — order list, order detail with saga timeline, checkout with vinyl catalogue, admin panel; Keycloak OIDC auth, PrimeNG UI, nginx in Docker
-- [x] **Observability** — Micrometer metrics on all four services, Prometheus scraping every 5 s, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically (Saga & Orders, Kafka & Messaging, Logs, System Health); metrics: order throughput, saga outcome rates, average saga duration by outcome, outbox pending lag, inbox duplicates, payment and inventory counters, JVM heap and GC, HTTP request and error rates at the gateway; Correlation ID distributed tracing across all services via dedicated Loki dashboard; consumer crash simulation with DLQ observability
-- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (Postgres, Kafka, Apicurio); order-service: 46 tests covering full saga flows (happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation), HTTP contract validation, OutboxPublisherJob retry/batch logic; payment-service and inventory-service: consumer unit tests (accepted, rejected, crash mode)
+- [x] **Angular Frontend** — order list, order detail with live saga timeline, checkout with vinyl catalogue, admin panel; PrimeNG UI, nginx in Docker
+- [x] **Observability** — Micrometer metrics, Prometheus, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically; Correlation ID distributed tracing via dedicated Loki dashboard
+- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers; full saga flows, HTTP contract validation, outbox publisher; Playwright E2E tests for happy path, failure path, and auth

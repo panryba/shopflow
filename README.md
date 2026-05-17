@@ -132,9 +132,9 @@ graph TB
 
 #### Hexagonal Architecture (Ports & Adapters)
 The `order-service` is structured in three layers with strict dependency direction (inward only):
-- **Domain** — pure Java, no framework dependencies
-- **Application** — use cases and saga orchestration, depends only on domain
-- **Infrastructure** — Kafka, JPA, outbox, inbox; implements the output ports defined by the application layer
+- Domain — pure Java, no framework dependencies
+- Application — use cases and saga orchestration, depends only on domain
+- Infrastructure — Kafka, JPA, outbox, inbox; implements the output ports defined by the application layer
 
 Payment and inventory services are intentionally thin — their sole responsibility is to simulate an external system responding to events.
 

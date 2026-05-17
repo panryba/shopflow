@@ -2,14 +2,16 @@
 
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shop-microservices/actions/workflows/ci.yml)
 
+---
+
+## Overview
+
 A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
 
-| | |
-|---|---|
-| **Architecture** | Hexagonal Architecture, Domain-Driven Design, API Gateway, JWT Authentication |
-| **Reliability** | Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Idempotent Order Creation, Dead Letter Queue, Saga Timeout, Fault Tolerance, Concurrency Control |
-| **Messaging** | Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing |
-| **Observability** | Micrometer, Prometheus, Loki, Grafana |
+**Architecture:** Hexagonal Architecture, Domain-Driven Design, API Gateway  
+**Reliability:** Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control  
+**Messaging:** Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing  
+**Observability:** Micrometer, Prometheus, Loki, Grafana
 
 ### Create Order Flow
 
@@ -126,7 +128,9 @@ graph TB
 
 ## Patterns Implemented
 
-### Hexagonal Architecture (Ports & Adapters)
+### Architecture
+
+#### Hexagonal Architecture (Ports & Adapters)
 The `order-service` is structured in three layers with strict dependency direction (inward only):
 - **Domain** — pure Java, no framework dependencies
 - **Application** — use cases and saga orchestration, depends only on domain
@@ -134,44 +138,58 @@ The `order-service` is structured in three layers with strict dependency directi
 
 Payment and inventory services are intentionally thin — their sole responsibility is to simulate an external system responding to events.
 
-### Domain-Driven Design
+#### Domain-Driven Design
 The `order-service` domain layer models the business explicitly: `Order` is the aggregate root, `OrderItem` is a child entity, `Money` and `OrderId` are value objects, and `OrderStatus` is a state enum. No Quarkus, JPA, or Kafka annotation touches this layer. Infrastructure concerns (persistence, messaging) implement ports defined by the application layer and depend inward — never the other way around.
 
-### Saga Orchestrator
-The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
-
-### Transactional Outbox
-The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern).
-
-### Idempotent Consumer (Inbox)
-The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
-
-### Dead Letter Queue
-Each consumer channel is configured with `failure-strategy=dead-letter-queue`. Retries are handled via application-level `@Retry` and Kafka redelivery. After repeated failures, a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
-
-### Saga Timeout
-A scheduled timeout process runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
-
-### Avro + Schema Registry
-All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
-
-### Partition Key Consistency
-Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions.
-
-### Correlation ID Tracing
-Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events.
-
-### Concurrency Control
-Concurrent updates are retried automatically after optimistic locking conflicts. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
-
-### Idempotent Order Creation
-`POST /orders` accepts an optional `Idempotency-Key: <uuid>` header. The client generates the UUID before sending and retries safely if the network times out — the order-service checks whether that key was already processed and returns the existing order ID instead of creating a duplicate. The key is stored as a unique-constrained column on the `orders` table. Concurrent duplicate requests are resolved safely using a database unique constraint with fallback lookup logic. The key is echoed back in the response `Idempotency-Key` header.
-
-### API Gateway
+#### API Gateway
 A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed MicroProfile REST Client proxy interfaces. The gateway generates or propagates `X-Correlation-ID` on every inbound request (server-side `ContainerRequestFilter`) and attaches it to every outgoing downstream call (client-side `ClientRequestFilter` registered via `@RegisterProvider`). Downstream responses are rebuilt before returning to the client — hop-by-hop headers (`transfer-encoding`, `content-length`, `host`, `connection`) are stripped to prevent HTTP framing conflicts. Unreachable downstream services map to `502 Bad Gateway`; open circuit returns `503 Service Unavailable`; 4xx errors from downstream pass through with their original status code.
 
-### Fault Tolerance
+### Reliability
+
+#### Saga Orchestrator
+The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
+
+#### Transactional Outbox
+The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern).
+
+#### Idempotent Consumer (Inbox)
+The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
+
+#### Dead Letter Queue
+Each consumer channel is configured with `failure-strategy=dead-letter-queue`. Retries are handled via application-level `@Retry` and Kafka redelivery. After repeated failures, a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
+
+#### Saga Timeout
+A scheduled timeout process runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
+
+#### Idempotent Order Creation
+`POST /orders` accepts an optional `Idempotency-Key: <uuid>` header. The client generates the UUID before sending and retries safely if the network times out — the order-service checks whether that key was already processed and returns the existing order ID instead of creating a duplicate. The key is stored as a unique-constrained column on the `orders` table. Concurrent duplicate requests are resolved safely using a database unique constraint with fallback lookup logic. The key is echoed back in the response `Idempotency-Key` header.
+
+#### Fault Tolerance
 All gateway-to-downstream calls are protected by MicroProfile Fault Tolerance. Read and idempotent write operations use `@Retry(maxRetries = 3, delay = 200ms)` — retries abort immediately on `WebApplicationException` so 4xx responses are never retried. POST (create order) gets no retry as the operation is not idempotent. All operations are protected by `@CircuitBreaker(requestVolumeThreshold = 10, failureRatio = 0.5, delay = 5s, successThreshold = 2)` — after 50% failures across 10 requests the circuit opens for 5 seconds; once open, requests fail fast with `503 SERVICE_UNAVAILABLE` and a structured `GatewayErrorResponse` without hitting the downstream service. REST clients are configured with a 1s connect timeout and 3s read timeout to bound worst-case latency on the local/Docker network.
+
+#### Concurrency Control
+Concurrent updates are retried automatically after optimistic locking conflicts. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
+
+### Messaging
+
+#### Avro + Schema Registry
+All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
+
+#### Partition Key Consistency
+Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions.
+
+#### Correlation ID Tracing
+Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events.
+
+---
+
+## JWT Authentication
+
+JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
+
+The raw `Authorization: Bearer <token>` header is forwarded downstream so services can extract user identity without re-validating the token against Keycloak. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires admin role.
+
+The order-service derives customer identity directly from the JWT subject claim — `customerId` is never trusted from the request body. The `sub` claim is a UUID and serves as the authoritative customer identifier for every order. The `preferred_username` claim is persisted with the order at creation time to avoid cross-service user lookups.
 
 ---
 
@@ -239,6 +257,8 @@ SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
   WAITING_INVENTORY → cancel order + payment-rollback
 ```
 
+---
+
 ## Simulating Failures
 
 All failure scenarios can be toggled from the **Admin Panel** in the frontend (`/admin`, requires admin role).
@@ -274,16 +294,6 @@ PUT http://localhost:8090/api/payment/crash?enabled=false   # restore
 PUT http://localhost:8090/api/inventory/crash?enabled=true  # Authorization: Bearer $ADMIN_TOKEN
 PUT http://localhost:8090/api/inventory/crash?enabled=false # restore
 ```
-
----
-
-## JWT Authentication
-
-JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
-
-The raw `Authorization: Bearer <token>` header is forwarded downstream so services can extract user identity without re-validating the token against Keycloak. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires admin role.
-
-The order-service derives customer identity directly from the JWT subject claim — `customerId` is never trusted from the request body. The `sub` claim is a UUID and serves as the authoritative customer identifier for every order. The `preferred_username` claim is persisted with the order at creation time to avoid cross-service user lookups.
 
 ---
 

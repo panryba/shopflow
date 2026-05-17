@@ -13,7 +13,7 @@ A production-shaped online shop built as a microservices portfolio project, demo
 - **Messaging** — Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
 - **Observability** — Micrometer, Prometheus, Loki, Grafana
 
-#### Create Order Flow:
+**Create Order Flow:**
 
 ```
 Angular Frontend
@@ -164,7 +164,7 @@ The orchestrator never publishes to Kafka directly inside a business transaction
 The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
 
 #### Dead Letter Queue
-Each consumer channel is configured with `failure-strategy=dead-letter-queue`. Retries are handled via application-level `@Retry` and Kafka redelivery. After repeated failures, a poisoned message is moved to a `<topic>-dlq` topic and the consumer continues. Nothing blocks.
+Each consumer is configured with retry and dead-letter-queue fallback. Failed message processing is retried automatically; after repeated failures the event is moved to a dedicated `<topic>-dlq` topic and the consumer continues processing subsequent messages without blocking.
 
 #### Saga Timeout
 A scheduled timeout process runs every 10 seconds and finds sagas where the step deadline has passed (30 seconds per step). Timed-out `WAITING_PAYMENT` sagas cancel the order. Timed-out `WAITING_INVENTORY` sagas cancel the order and trigger a `payment-rollback` to reverse the charge. This prevents orders from being stuck in a pending state forever if a downstream service is unavailable.
@@ -260,7 +260,7 @@ Order cancelled, payment reversed
 ### Timeout
 
 ```
-SagaTimeoutJob detects deadline exceeded (every 10s, 30s deadline per step)
+A scheduled process detects deadline exceeded (every 10s, 30s deadline per step)
   WAITING_PAYMENT   → cancel order
   WAITING_INVENTORY → cancel order + payment-rollback
 ```

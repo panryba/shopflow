@@ -13,7 +13,7 @@ A production-shaped online shop built as a microservices portfolio project, demo
 - **Messaging** — Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
 - **Observability** — Micrometer, Prometheus, Loki, Grafana
 
-#### Create Order Flow
+#### Create Order Flow:
 
 ```
 Angular Frontend
@@ -43,6 +43,8 @@ git clone https://github.com/panryba/shop-microservices.git
 cd shop-microservices
 docker compose up
 ```
+
+**Endpoints:**
 
 | Endpoint | URL |
 |----------|-----|
@@ -331,7 +333,7 @@ Full interactive contract: **http://localhost:8090/q/swagger-ui**
 
 The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates exclusively through the API Gateway.
 
-**Pages**
+**Pages:**
 
 | Page | Path | Access |
 |------|------|--------|

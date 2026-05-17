@@ -8,12 +8,12 @@
 
 A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
 
-**Architecture:** Hexagonal Architecture, Domain-Driven Design, API Gateway  
-**Reliability:** Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control  
-**Messaging:** Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing  
-**Observability:** Micrometer, Prometheus, Loki, Grafana
+- **Architecture** — Hexagonal Architecture, Domain-Driven Design, API Gateway
+- **Reliability** — Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control
+- **Messaging** — Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
+- **Observability** — Micrometer, Prometheus, Loki, Grafana
 
-### Create Order Flow
+#### Create Order Flow
 
 ```
 Angular Frontend

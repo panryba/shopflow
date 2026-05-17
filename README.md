@@ -32,6 +32,8 @@ Payment  Inventory
 Service  Service
 ```
 
+![Happy path saga — order created, payment confirmed, inventory reserved](docs/demo.gif)
+
 ---
 
 ## Quick Start
@@ -410,7 +412,7 @@ Four Grafana dashboards are provisioned automatically:
 
 **Correlation ID tracing** — the Logs dashboard accepts a Correlation ID and instantly shows the full saga flow across all services in chronological order. The Order Detail page links directly to Grafana pre-filtered to that correlation ID.
 
-Observability stack:
+**Observability stack:**
 
 | Tool | Port | Role |
 |------|------|------|

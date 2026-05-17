@@ -13,7 +13,7 @@ A production-shaped online shop built as a microservices portfolio project, demo
 - **Messaging** — Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
 - **Observability** — Micrometer, Prometheus, Loki, Grafana
 
-**Create Order Flow:**
+### Create Order Flow
 
 ```
 Angular Frontend

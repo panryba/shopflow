@@ -15,7 +15,7 @@ import com.example.order.domain.event.PaymentRollbackEvent;
 import com.example.order.domain.model.HistoryStatus;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
-import com.example.order.infrastructure.history.OrderStatusHistoryService;
+import com.example.order.application.port.output.OrderHistoryRecorder;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.observability.OrderMetrics;
@@ -43,7 +43,7 @@ public class OrderSagaOrchestrator {
     @Inject CorrelationIdProvider correlationIdProvider;
     @Inject OrderSagaRepository sagaRepository;
     @Inject InboxService inbox;
-    @Inject OrderStatusHistoryService historyService;
+    @Inject OrderHistoryRecorder historyService;
     @Inject Event<OrderStatusChangedEvent> statusChangedEvent;
     @Inject Event<OrderSagaCompletedEvent> sagaCompletedEvent;
     @Inject OrderMetrics metrics;

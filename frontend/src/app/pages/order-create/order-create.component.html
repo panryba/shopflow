@@ -54,6 +54,7 @@
               <span>{{ cartService.total() | number:'1.2-2' }} USD</span>
             </div>
             <p-button label="Place Order" icon="pi pi-check" styleClass="w-full btn-add-cart"
+                      [loading]="submitting()" [disabled]="submitting()"
                       (click)="submit()" />
           </div>
         }

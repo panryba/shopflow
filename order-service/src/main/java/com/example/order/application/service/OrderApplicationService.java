@@ -1,11 +1,11 @@
 package com.example.order.application.service;
 
 import com.example.order.application.port.input.OrderUseCase;
+import com.example.order.application.port.output.OrderHistoryRecorder;
 import com.example.order.application.port.output.OrderRepository;
 import com.example.order.domain.model.HistoryStatus;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
-import com.example.order.infrastructure.history.OrderStatusHistoryService;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +18,7 @@ import jakarta.ws.rs.NotFoundException;
 public class OrderApplicationService implements OrderUseCase {
 
     @Inject OrderRepository repository;
-    @Inject OrderStatusHistoryService historyService;
+    @Inject OrderHistoryRecorder historyService;
 
     @Override
     public void create(Order order) {

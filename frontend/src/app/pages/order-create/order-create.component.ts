@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -24,6 +24,7 @@ export class OrderCreateComponent {
   protected cartService = inject(CartService);
 
   readonly products = PRODUCTS;
+  readonly submitting = signal(false);
 
   constructor() {
     effect(() => {
@@ -39,6 +40,7 @@ export class OrderCreateComponent {
   ];
 
   submit(): void {
+    if (this.submitting()) return;
     const items = this.cartService.cart().map(i => ({
       productId: i.product.id,
       quantity: i.quantity,
@@ -46,6 +48,7 @@ export class OrderCreateComponent {
     }));
     if (!items.length) return;
 
+    this.submitting.set(true);
     this.orderService.create({ items }).subscribe({
       next: response => {
         const orderId = response.headers.get('Location')?.split('/').pop();
@@ -55,7 +58,10 @@ export class OrderCreateComponent {
           this.router.navigate(['/orders', orderId], { state: { corrId } });
         }
       },
-      error: () => this.messageService.add({ severity: 'error', summary: 'Failed to submit order' })
+      error: () => {
+        this.submitting.set(false);
+        this.messageService.add({ severity: 'error', summary: 'Failed to submit order' });
+      }
     });
   }
 }

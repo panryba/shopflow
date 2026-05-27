@@ -9,7 +9,7 @@ import com.example.order.domain.event.OrderStatusChangedEvent;
 import com.example.order.domain.event.PaymentCompletedEvent;
 import com.example.order.domain.event.PaymentFailedEvent;
 import com.example.order.domain.valueobject.OrderId;
-import com.example.order.infrastructure.history.OrderStatusHistoryService;
+import com.example.order.application.port.output.OrderHistoryRecorder;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.observability.OrderMetrics;
@@ -41,7 +41,7 @@ class OrderSagaOrchestratorTest {
     @Mock CorrelationIdProvider correlationIdProvider;
     @Mock OrderSagaRepository sagaRepository;
     @Mock InboxService inbox;
-    @Mock OrderStatusHistoryService historyService;
+    @Mock OrderHistoryRecorder historyService;
     @Mock Event<OrderStatusChangedEvent> statusChangedEvent;
     @Mock Event<OrderSagaCompletedEvent> sagaCompletedEvent;
     @Mock OrderMetrics metrics;

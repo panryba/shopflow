@@ -1,6 +1,5 @@
 package com.example.order.infrastructure.messaging;
 
-import com.example.order.application.port.output.OrderEventPublisher;
 import com.example.order.domain.event.InventoryRequestEvent;
 import com.example.order.domain.event.PaymentRequestEvent;
 import com.example.order.domain.event.PaymentRollbackEvent;
@@ -15,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @ApplicationScoped
-public class KafkaOrderEventPublisher implements OrderEventPublisher {
+public class KafkaOrderEventPublisher {
 
     public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
@@ -28,7 +27,6 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
     @Channel("payment-rollback")
     Emitter<com.example.order.events.avro.PaymentRollbackEvent> rollbackEmitter;
 
-    @Override
     public void publishPaymentRequest(PaymentRequestEvent event) {
         var avro = com.example.order.events.avro.PaymentRequestEvent.newBuilder()
                 .setEventId(event.eventId())
@@ -40,7 +38,6 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
         send(paymentEmitter, event.orderId(), event.correlationId(), avro);
     }
 
-    @Override
     public void publishInventoryRequest(InventoryRequestEvent event) {
         var avro = com.example.order.events.avro.InventoryRequestEvent.newBuilder()
                 .setEventId(event.eventId())
@@ -50,7 +47,6 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
         send(inventoryEmitter, event.orderId(), event.correlationId(), avro);
     }
 
-    @Override
     public void publishPaymentRollback(PaymentRollbackEvent event) {
         var avro = com.example.order.events.avro.PaymentRollbackEvent.newBuilder()
                 .setEventId(event.eventId())

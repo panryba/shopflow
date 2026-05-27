@@ -1,5 +1,6 @@
 package com.example.order.infrastructure.history;
 
+import com.example.order.application.port.output.OrderHistoryRecorder;
 import com.example.order.domain.model.HistoryStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class OrderStatusHistoryService {
+public class OrderStatusHistoryService implements OrderHistoryRecorder {
 
     @Inject EntityManager em;
     @Inject OrderStatusHistoryRepository repository;

@@ -20,7 +20,7 @@ public class InboxService {
     OrderMetrics metrics;
 
     @Transactional(REQUIRES_NEW)
-    public boolean receive(String eventId, String type) {
+    public boolean receive(String eventId, InboxEventType type) {
         try {
             repository.persist(
                     InboxEvent.builder()

@@ -18,8 +18,9 @@ public class InboxEvent {
     @Column(name = "event_id")
     private String eventId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false)
-    private String eventType;
+    private InboxEventType eventType;
 
     @Column(name = "received_at", nullable = false)
     private Instant receivedAt;

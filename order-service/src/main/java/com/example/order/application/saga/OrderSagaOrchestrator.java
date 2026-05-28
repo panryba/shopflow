@@ -16,6 +16,7 @@ import com.example.order.domain.model.HistoryStatus;
 import com.example.order.domain.model.Order;
 import com.example.order.domain.valueobject.OrderId;
 import com.example.order.application.port.output.OrderHistoryRecorder;
+import com.example.order.infrastructure.inbox.InboxEventType;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.observability.OrderMetrics;
@@ -109,7 +110,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void onPaymentCompleted(PaymentCompletedEvent event) {
-        if (!inbox.receive(event.eventId(), "PaymentCompleted")) return;
+        if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());
@@ -139,7 +140,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void onPaymentFailed(PaymentFailedEvent event) {
-        if (!inbox.receive(event.eventId(), "PaymentFailed")) return;
+        if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_FAILED)) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());
@@ -162,7 +163,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void onInventoryApproved(InventoryApprovedEvent event) {
-        if (!inbox.receive(event.eventId(), "InventoryApproved")) return;
+        if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_APPROVED)) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());
@@ -185,7 +186,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void onInventoryRejected(InventoryRejectedEvent event) {
-        if (!inbox.receive(event.eventId(), "InventoryRejected")) return;
+        if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_REJECTED)) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());
@@ -215,7 +216,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void onPaymentRolledBack(PaymentRollbackCompletedEvent event) {
-        if (!inbox.receive(event.eventId(), "PaymentRollbackCompleted")) return;
+        if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_ROLLBACK_COMPLETED)) return;
 
         try {
             OrderSagaState saga = sagaRepository.find(event.orderId());

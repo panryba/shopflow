@@ -10,6 +10,7 @@ import com.example.order.domain.event.PaymentCompletedEvent;
 import com.example.order.domain.event.PaymentFailedEvent;
 import com.example.order.domain.valueobject.OrderId;
 import com.example.order.application.port.output.OrderHistoryRecorder;
+import com.example.order.infrastructure.inbox.InboxEventType;
 import com.example.order.infrastructure.inbox.InboxService;
 import com.example.order.infrastructure.observability.CorrelationIdProvider;
 import com.example.order.infrastructure.observability.OrderMetrics;
@@ -56,7 +57,7 @@ class OrderSagaOrchestratorTest {
         PaymentCompletedEvent event = PaymentCompletedEvent.of(orderId, "corr-1");
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_PAYMENT);
 
-        when(inbox.receive(event.eventId(), "PaymentCompleted")).thenReturn(true);
+        when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)).thenReturn(true);
         when(sagaRepository.find(orderId)).thenReturn(saga);
 
         orchestrator.onPaymentCompleted(event);
@@ -71,7 +72,7 @@ class OrderSagaOrchestratorTest {
         UUID orderId = UUID.randomUUID();
         PaymentCompletedEvent event = PaymentCompletedEvent.of(orderId, "corr-1");
 
-        when(inbox.receive(event.eventId(), "PaymentCompleted")).thenReturn(false);
+        when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)).thenReturn(false);
 
         orchestrator.onPaymentCompleted(event);
 
@@ -84,7 +85,7 @@ class OrderSagaOrchestratorTest {
         UUID orderId = UUID.randomUUID();
         PaymentCompletedEvent event = PaymentCompletedEvent.of(orderId, "corr-1");
 
-        when(inbox.receive(event.eventId(), "PaymentCompleted")).thenReturn(true);
+        when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)).thenReturn(true);
         when(sagaRepository.find(orderId)).thenReturn(sagaInStep(orderId, OrderSagaState.SagaStep.CANCELLED));
 
         orchestrator.onPaymentCompleted(event);
@@ -98,7 +99,7 @@ class OrderSagaOrchestratorTest {
         PaymentFailedEvent event = PaymentFailedEvent.of(orderId, "Insufficient funds", "corr-1");
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_PAYMENT);
 
-        when(inbox.receive(event.eventId(), "PaymentFailed")).thenReturn(true);
+        when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_FAILED)).thenReturn(true);
         when(sagaRepository.find(orderId)).thenReturn(saga);
 
         orchestrator.onPaymentFailed(event);
@@ -114,7 +115,7 @@ class OrderSagaOrchestratorTest {
         InventoryApprovedEvent event = InventoryApprovedEvent.of(orderId, "corr-1");
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_INVENTORY);
 
-        when(inbox.receive(event.eventId(), "InventoryApproved")).thenReturn(true);
+        when(inbox.receive(event.eventId(), InboxEventType.INVENTORY_APPROVED)).thenReturn(true);
         when(sagaRepository.find(orderId)).thenReturn(saga);
 
         orchestrator.onInventoryApproved(event);
@@ -130,7 +131,7 @@ class OrderSagaOrchestratorTest {
         InventoryRejectedEvent event = InventoryRejectedEvent.of(orderId, "Out of stock", "corr-1");
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_INVENTORY);
 
-        when(inbox.receive(event.eventId(), "InventoryRejected")).thenReturn(true);
+        when(inbox.receive(event.eventId(), InboxEventType.INVENTORY_REJECTED)).thenReturn(true);
         when(sagaRepository.find(orderId)).thenReturn(saga);
 
         orchestrator.onInventoryRejected(event);

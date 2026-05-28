@@ -29,6 +29,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -36,6 +37,9 @@ import java.util.UUID;
 
 @ApplicationScoped
 public class OrderSagaOrchestrator {
+
+    @ConfigProperty(name = "app.saga.step-timeout-seconds", defaultValue = "30")
+    long stepTimeoutSeconds;
 
     @Inject OutboxService outbox;
     @Inject OrderUseCase service;
@@ -74,7 +78,7 @@ public class OrderSagaOrchestrator {
                     OrderSagaState.builder()
                             .orderId(order.getId().value())
                             .step(OrderSagaState.SagaStep.WAITING_PAYMENT)
-                            .deadline(Instant.now().plusSeconds(30))
+                            .deadline(Instant.now().plusSeconds(stepTimeoutSeconds))
                             .correlationId(correlationId)
                             .build()
             );
@@ -115,7 +119,7 @@ public class OrderSagaOrchestrator {
             statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAID));
 
             saga.setStep(OrderSagaState.SagaStep.WAITING_INVENTORY);
-            saga.setDeadline(Instant.now().plusSeconds(30));
+            saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
 
             outbox.save(
                     Order.class.getSimpleName(),
@@ -198,7 +202,7 @@ public class OrderSagaOrchestrator {
             );
 
             saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
-            saga.setDeadline(Instant.now().plusSeconds(30));
+            saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
 
             Log.infof("Inventory rejected step=WAITING_ROLLBACK reason=%s", event.reason());
             inbox.markProcessed(event.eventId());
@@ -250,7 +254,7 @@ public class OrderSagaOrchestrator {
                     PaymentRollbackEvent.of(orderId.value(), saga.getCorrelationId())
             );
             saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
-            saga.setDeadline(Instant.now().plusSeconds(30));
+            saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
             // No completion signal — onPaymentRolledBack() will fire it
         } else {
             saga.setStep(OrderSagaState.SagaStep.CANCELLED);

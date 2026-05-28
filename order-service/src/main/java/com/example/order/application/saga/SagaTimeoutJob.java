@@ -15,11 +15,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
 
 @ApplicationScoped
 public class SagaTimeoutJob {
+
+    @ConfigProperty(name = "app.saga.step-timeout-seconds", defaultValue = "30")
+    long stepTimeoutSeconds;
 
     @Inject OrderSagaRepository sagaRepository;
     @Inject OrderUseCase orderService;
@@ -59,7 +63,7 @@ public class SagaTimeoutJob {
                         PaymentRollbackEvent.of(saga.getOrderId(), saga.getCorrelationId())
                 );
                 saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
-                saga.setDeadline(Instant.now().plusSeconds(30));
+                saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
                 metrics.sagaTimedOut();
                 // No completion signal — onPaymentRolledBack() will fire sagaCancelled + sagaCompensated
             }

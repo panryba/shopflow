@@ -167,6 +167,8 @@ The orchestrator never publishes to Kafka directly inside a business transaction
 #### Idempotent Consumer (Inbox)
 The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
 
+The inbox insert runs in its own independent transaction committed immediately before any business logic runs — this guarantees the duplicate check is authoritative regardless of what happens next. If processing fails, the failure status is also persisted independently so it survives an outer transaction rollback.
+
 #### Dead Letter Queue
 Each consumer is configured with retry and dead-letter-queue fallback. Failed message processing is retried automatically; after repeated failures the event is moved to a dedicated `<topic>-dlq` topic and the consumer continues processing subsequent messages without blocking.
 

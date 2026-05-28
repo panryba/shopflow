@@ -8,7 +8,9 @@
                   [responsiveOptions]="responsiveOptions">
         <ng-template let-product pTemplate="item">
           <div class="product-card">
-            <img [ngSrc]="product.image" [alt]="product.artist + ' – ' + product.name" width="300" height="300" />
+            <div class="product-img-wrap">
+              <img [ngSrc]="product.image" [alt]="product.artist + ' – ' + product.name" fill sizes="(max-width: 768px) 90vw, 30vw" />
+            </div>
             <div class="product-info">
               <p class="artist">{{ product.artist }}</p>
               <p class="album">{{ product.name }}</p>

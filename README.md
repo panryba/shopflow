@@ -184,7 +184,7 @@ A scheduled timeout process runs every 10 seconds and finds sagas where the step
 All gateway-to-downstream calls are protected by MicroProfile Fault Tolerance. Read and idempotent write operations are retried up to 3 times with a short delay between attempts — retries abort immediately on 4xx responses so client errors are never retried. POST (create order) is not retried as the idempotency key is optional — without it, retrying could produce duplicate orders. All downstream calls are protected by a circuit breaker that opens after 50% failures across 10 requests and remains open for 5 seconds; once open, requests fail fast with `503 SERVICE_UNAVAILABLE` without hitting the downstream service. REST clients are configured with connect and read timeouts to bound worst-case latency.
 
 #### Concurrency Control
-Concurrent updates are retried automatically after optimistic locking conflicts. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
+The `Order` aggregate uses optimistic locking — every update verifies the entity hasn't been modified by another transaction since it was read. If a conflict is detected, the operation is retried automatically. After repeated conflicts the request fails with a conflict error. This prevents silent data corruption under concurrent load without resorting to pessimistic locking.
 
 ### Messaging
 

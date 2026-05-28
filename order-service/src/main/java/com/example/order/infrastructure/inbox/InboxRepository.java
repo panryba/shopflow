@@ -9,9 +9,6 @@ import java.time.Instant;
 public class InboxRepository implements PanacheRepositoryBase<InboxEvent, String> {
 
     public long deleteOlderThan(Instant cutoff) {
-        return delete("status in (?1, ?2) and receivedAt < ?3",
-                InboxEvent.Status.PROCESSED,
-                InboxEvent.Status.FAILED,
-                cutoff);
+        return delete("receivedAt < ?1", cutoff);
     }
 }

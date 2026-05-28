@@ -23,11 +23,12 @@ public class OrderSagaRepository implements PanacheRepositoryBase<OrderSagaState
         return findById(orderId);
     }
 
+    @SuppressWarnings("unchecked")
     public List<OrderSagaState> findExpired(Instant now) {
         return em.createNativeQuery("""
                 SELECT * FROM order_saga
                 WHERE deadline < :now
-                  AND step IN ('WAITING_PAYMENT', 'WAITING_INVENTORY')
+                  AND step IN ('WAITING_PAYMENT', 'WAITING_INVENTORY', 'WAITING_ROLLBACK')
                 ORDER BY deadline
                 FOR UPDATE SKIP LOCKED
                 """, OrderSagaState.class)

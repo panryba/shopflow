@@ -41,7 +41,7 @@ public class SagaTimeoutJob {
         var orderId = new OrderId(saga.getOrderId());
 
         switch (saga.getStep()) {
-            case WAITING_PAYMENT -> {
+            case WAITING_PAYMENT, WAITING_ROLLBACK -> {
                 orderService.cancel(orderId);
                 statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED));
                 saga.setStep(OrderSagaState.SagaStep.CANCELLED);
@@ -63,15 +63,6 @@ public class SagaTimeoutJob {
                 metrics.sagaTimedOut();
                 // No completion signal — onPaymentRolledBack() will fire sagaCancelled + sagaCompensated
             }
-            case WAITING_ROLLBACK -> {
-                orderService.cancel(orderId);
-                statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED));
-                saga.setStep(OrderSagaState.SagaStep.CANCELLED);
-                sagaCompletedEvent.fire(new OrderSagaCompletedEvent(saga.getOrderId()));
-                metrics.sagaCancelled(saga.getOrderId());
-                metrics.sagaTimedOut();
-            }
-            default -> { return; }
         }
     }
 }

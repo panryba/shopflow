@@ -14,6 +14,7 @@ public class OutboxRepository implements PanacheRepository<OutboxEventEntity> {
     @Inject
     EntityManager em;
 
+    @SuppressWarnings("unchecked")
     public List<OutboxEventEntity> findUnprocessed(int limit, int maxRetries) {
         if (limit <= 0) throw new IllegalArgumentException("limit must be > 0");
         return em.createNativeQuery("""

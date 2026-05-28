@@ -42,8 +42,4 @@ public class OrderSagaState {
         CANCELLED
     }
 
-    public boolean isWaiting() {
-        return step == SagaStep.WAITING_PAYMENT
-            || step == SagaStep.WAITING_INVENTORY;
-    }
 }

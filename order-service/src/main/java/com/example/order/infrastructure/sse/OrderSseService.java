@@ -32,7 +32,7 @@ public class OrderSseService {
 
     public Multi<String> stream(UUID orderId) {
         return Multi.createFrom().emitter(emitter -> {
-            emitters.computeIfAbsent(orderId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+            emitters.computeIfAbsent(orderId, _ -> new CopyOnWriteArrayList<>()).add(emitter);
             emitter.onTermination(() -> {
                 var list = emitters.get(orderId);
                 if (list != null) {

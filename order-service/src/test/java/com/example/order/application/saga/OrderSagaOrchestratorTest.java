@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unused")
 class OrderSagaOrchestratorTest {
 
     @Mock OutboxService outbox;

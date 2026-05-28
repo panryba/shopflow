@@ -62,7 +62,9 @@
           <tr>
             <td>
               <div class="product-cell">
-                <img [src]="productImage(item.productId)" [alt]="productName(item.productId)" class="product-thumb" />
+                @if (productImage(item.productId); as img) {
+                  <img [ngSrc]="img" [alt]="productName(item.productId)" class="product-thumb" width="36" height="36" />
+                }
                 {{ productName(item.productId) }}
               </div>
             </td>

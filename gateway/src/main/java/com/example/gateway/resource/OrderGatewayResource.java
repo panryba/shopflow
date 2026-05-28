@@ -15,9 +15,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.jboss.resteasy.reactive.RestSseElementType;
 
-import java.util.Set;
 import java.util.UUID;
 
 @Authenticated
@@ -26,65 +24,40 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 public class OrderGatewayResource {
 
-    private static final Set<String> BLOCKED_HEADERS = Set.of(
-            "transfer-encoding",
-            "content-length",
-            "host",
-            "connection",
-            "x-correlation-id"
-    );
-
     @Inject
     @RestClient
     OrderServiceClient orderServiceClient;
 
+    @Inject
+    GatewayResponseForwarder forwarder;
+
     @POST
     public Response create(String body, @HeaderParam("Idempotency-Key") String idempotencyKey) {
-        return forward(orderServiceClient.create(body, idempotencyKey));
+        return forwarder.forward(orderServiceClient.create(body, idempotencyKey));
     }
 
     @GET
     public Response getAll() {
-        return forward(orderServiceClient.getAll());
+        return forwarder.forward(orderServiceClient.getAll());
     }
 
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") UUID id) {
-        return forward(orderServiceClient.getById(id));
+        return forwarder.forward(orderServiceClient.getById(id));
     }
 
     @PUT
     @Path("/{id}/cancel")
     public Response cancel(@PathParam("id") UUID id) {
-        return forward(orderServiceClient.cancel(id));
+        return forwarder.forward(orderServiceClient.cancel(id));
     }
 
     @GET
     @Path("/{id}/events")
     @Produces(MediaType.SERVER_SENT_EVENTS)
-    @RestSseElementType(MediaType.TEXT_PLAIN)
     public Multi<String> streamStatus(@PathParam("id") UUID id) {
         return orderServiceClient.streamStatus(id);
     }
 
-    private Response forward(Response downstream) {
-        String body = downstream.hasEntity()
-                ? downstream.readEntity(String.class)
-                : null;
-
-        Response.ResponseBuilder builder = Response.status(downstream.getStatus());
-
-        if (body != null) {
-            builder.entity(body);
-        }
-
-        downstream.getHeaders().forEach((k, values) -> {
-            if (!BLOCKED_HEADERS.contains(k.toLowerCase())) {
-                values.forEach(v -> builder.header(k, v));
-            }
-        });
-
-        return builder.build();
-    }
 }

@@ -18,7 +18,6 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentEventConsumerTest {
@@ -51,6 +50,7 @@ class PaymentEventConsumerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void process_accepted_recordsAcceptedMetricAndAcks() throws Exception {
         Message<com.example.order.events.avro.PaymentRequestEvent> msg = mockMessage(requestAvro);
 
@@ -63,6 +63,7 @@ class PaymentEventConsumerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void process_rejected_recordsRejectedMetricAndAcks() throws Exception {
         consumer.setAccepted(false);
         Message<com.example.order.events.avro.PaymentRequestEvent> msg = mockMessage(requestAvro);
@@ -76,6 +77,7 @@ class PaymentEventConsumerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void rollback_recordsRolledBackMetricAndAcks() throws Exception {
         Message<com.example.order.events.avro.PaymentRollbackEvent> msg = mockMessage(rollbackAvro);
 

@@ -24,39 +24,39 @@ public interface PaymentServiceClient {
     @GET
     @Path("/mode")
     @Produces(MediaType.APPLICATION_JSON)
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response getMode();
 
     @PUT
     @Path("/mode")
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response setMode(@QueryParam("accept") boolean accept);
 
     @GET
     @Path("/delay")
     @Produces(MediaType.APPLICATION_JSON)
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response getDelay();
 
     @PUT
     @Path("/delay")
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response setDelay(@QueryParam("seconds") int seconds);
 
     @GET
     @Path("/crash")
     @Produces(MediaType.APPLICATION_JSON)
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response getCrash();
 
     @PUT
     @Path("/crash")
-    @Retry(maxRetries = 3, delay = 200)
+    @Retry(delay = 200)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response setCrash(@QueryParam("enabled") boolean enabled);
 }

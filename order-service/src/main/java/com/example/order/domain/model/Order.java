@@ -13,7 +13,7 @@ import java.util.UUID;
 @Getter
 public class Order {
 
-    private OrderId id;
+    private final OrderId id;
     private List<OrderItem> items = new ArrayList<>();
     private OrderStatus status;
     private UUID idempotencyKey;

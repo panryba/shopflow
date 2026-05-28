@@ -49,10 +49,10 @@ export class OrderListComponent implements OnInit {
   }
 
   view(id: string) {
-    this.router.navigate(['/orders', id]);
+    void this.router.navigate(['/orders', id]);
   }
 
   newOrder() {
-    this.router.navigate(['/orders/new']);
+    void this.router.navigate(['/orders/new']);
   }
 }

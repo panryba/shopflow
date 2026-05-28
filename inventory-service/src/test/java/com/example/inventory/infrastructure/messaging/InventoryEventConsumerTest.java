@@ -18,7 +18,6 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class InventoryEventConsumerTest {
@@ -42,6 +41,7 @@ class InventoryEventConsumerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void process_accepted_emitsInventoryApproved() throws Exception {
         Message<com.example.order.events.avro.InventoryRequestEvent> msg = mockMessage(requestAvro);
 
@@ -54,6 +54,7 @@ class InventoryEventConsumerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void process_rejected_emitsInventoryRejected() throws Exception {
         consumer.setAccepted(false);
         Message<com.example.order.events.avro.InventoryRequestEvent> msg = mockMessage(requestAvro);

@@ -8,7 +8,7 @@
                   [responsiveOptions]="responsiveOptions">
         <ng-template let-product pTemplate="item">
           <div class="product-card">
-            <img [src]="product.image" [alt]="product.artist + ' – ' + product.name" />
+            <img [ngSrc]="product.image" [alt]="product.artist + ' – ' + product.name" width="300" height="300" />
             <div class="product-info">
               <p class="artist">{{ product.artist }}</p>
               <p class="album">{{ product.name }}</p>
@@ -31,7 +31,7 @@
         } @else {
           @for (item of cartService.cart(); track item.product.id) {
             <div class="cart-item">
-              <img [src]="item.product.image" [alt]="item.product.name" />
+              <img [ngSrc]="item.product.image" [alt]="item.product.name" width="44" height="44" />
               <div class="item-info">
                 <p class="item-name">{{ item.product.artist }} – {{ item.product.name }}</p>
                 <p class="item-price">{{ item.product.price | number:'1.2-2' }} USD</p>

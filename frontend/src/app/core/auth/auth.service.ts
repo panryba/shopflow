@@ -39,10 +39,10 @@ export class AuthService {
   }
 
   login(): void {
-    this.kc.login();
+    void this.kc.login();
   }
 
   logout(): void {
-    this.kc.logout();
+    void this.kc.logout();
   }
 }

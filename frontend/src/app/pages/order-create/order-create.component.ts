@@ -1,5 +1,5 @@
 import { Component, inject, effect, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, NgOptimizedImage } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -7,12 +7,12 @@ import { CarouselModule } from 'primeng/carousel';
 import { MessageService } from 'primeng/api';
 import { OrderService } from '../../core/services/order.service';
 import { CartService } from '../../core/services/cart.service';
-import { PRODUCTS, Product } from '../../core/constants/products';
+import { PRODUCTS } from '../../core/constants/products';
 
 @Component({
   selector: 'app-order-create',
   standalone: true,
-  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe],
+  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage],
   templateUrl: './order-create.component.html',
   styleUrl: './order-create.component.scss'
 })
@@ -55,7 +55,7 @@ export class OrderCreateComponent {
         const corrId = response.headers.get('X-Correlation-ID') ?? undefined;
         if (orderId) {
           this.cartService.clear();
-          this.router.navigate(['/orders', orderId], { state: { corrId } });
+          void this.router.navigate(['/orders', orderId], { state: { corrId } });
         }
       },
       error: () => {

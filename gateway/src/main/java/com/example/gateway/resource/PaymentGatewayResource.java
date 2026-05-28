@@ -12,33 +12,30 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-import java.util.Set;
-
 @Path("/api/payment")
 @Produces(MediaType.TEXT_PLAIN)
 public class PaymentGatewayResource {
 
-    private static final Set<String> BLOCKED_HEADERS = Set.of(
-            "transfer-encoding", "content-length", "host", "connection", "x-correlation-id"
-    );
-
     @Inject
     @RestClient
     PaymentServiceClient paymentServiceClient;
+
+    @Inject
+    GatewayResponseForwarder forwarder;
 
     @GET
     @Path("/mode")
     @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getMode() {
-        return forward(paymentServiceClient.getMode());
+        return forwarder.forward(paymentServiceClient.getMode());
     }
 
     @PUT
     @Path("/mode")
     @RolesAllowed("admin")
     public Response setMode(@QueryParam("accept") boolean accept) {
-        return forward(paymentServiceClient.setMode(accept));
+        return forwarder.forward(paymentServiceClient.setMode(accept));
     }
 
     @GET
@@ -46,14 +43,14 @@ public class PaymentGatewayResource {
     @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getDelay() {
-        return forward(paymentServiceClient.getDelay());
+        return forwarder.forward(paymentServiceClient.getDelay());
     }
 
     @PUT
     @Path("/delay")
     @RolesAllowed("admin")
     public Response setDelay(@QueryParam("seconds") int seconds) {
-        return forward(paymentServiceClient.setDelay(seconds));
+        return forwarder.forward(paymentServiceClient.setDelay(seconds));
     }
 
     @GET
@@ -61,23 +58,14 @@ public class PaymentGatewayResource {
     @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCrash() {
-        return forward(paymentServiceClient.getCrash());
+        return forwarder.forward(paymentServiceClient.getCrash());
     }
 
     @PUT
     @Path("/crash")
     @RolesAllowed("admin")
     public Response setCrash(@QueryParam("enabled") boolean enabled) {
-        return forward(paymentServiceClient.setCrash(enabled));
+        return forwarder.forward(paymentServiceClient.setCrash(enabled));
     }
 
-    private Response forward(Response downstream) {
-        String body = downstream.hasEntity() ? downstream.readEntity(String.class) : null;
-        Response.ResponseBuilder builder = Response.status(downstream.getStatus());
-        if (body != null) builder.entity(body);
-        downstream.getHeaders().forEach((k, values) -> {
-            if (!BLOCKED_HEADERS.contains(k.toLowerCase())) values.forEach(v -> builder.header(k, v));
-        });
-        return builder.build();
-    }
 }

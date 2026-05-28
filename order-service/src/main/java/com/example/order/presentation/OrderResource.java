@@ -15,7 +15,6 @@ import io.smallrye.common.annotation.Blocking;
 import org.jboss.logging.MDC;
 import io.smallrye.mutiny.Multi;
 import io.quarkus.security.Authenticated;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PersistenceException;
@@ -26,7 +25,6 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.jwt.JsonWebToken;
-import org.jboss.resteasy.reactive.RestSseElementType;
 
 import java.util.List;
 import java.util.UUID;
@@ -59,7 +57,7 @@ public class OrderResource {
     String adminRole;
 
     @POST
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public Response create(@Valid CreateOrderRequest request,
                            @HeaderParam("Idempotency-Key") UUID idempotencyKey) {
         UUID customerId = UUID.fromString(jwt.getSubject());
@@ -76,9 +74,7 @@ public class OrderResource {
 
     @PUT
     @Path("/{id}/cancel")
-    @Retry(maxRetries = 3, delay = 200, jitter = 200,
-            retryOn = OptimisticLockException.class,
-            abortOn = NotFoundException.class)
+    @Retry(delay = 200, retryOn = OptimisticLockException.class, abortOn = NotFoundException.class)
     public Response cancel(@PathParam("id") UUID id) {
         MDC.put("orderId", id.toString());
         Log.infof("Order cancel requested");
@@ -92,7 +88,7 @@ public class OrderResource {
     }
 
     @GET
-    @Retry(maxRetries = 3, delay = 200, jitter = 200, retryOn = PersistenceException.class)
+    @Retry(delay = 200, retryOn = PersistenceException.class)
     public List<OrderResponse> getAll() {
         if (jwt.getGroups().contains(adminRole)) {
             return service.findAllOrders().stream().map(mapper::toResponse).toList();
@@ -103,9 +99,7 @@ public class OrderResource {
 
     @GET
     @Path("/{id}")
-    @Retry(maxRetries = 3, delay = 200, jitter = 200,
-            retryOn = PersistenceException.class,
-            abortOn = NotFoundException.class)
+    @Retry(delay = 200, retryOn = PersistenceException.class, abortOn = NotFoundException.class)
     public OrderResponse getById(@PathParam("id") UUID id) {
         Order order = service.findById(new OrderId(id));
         if (!jwt.getGroups().contains(adminRole) && !UUID.fromString(jwt.getSubject()).equals(order.getUserId())) {
@@ -120,7 +114,6 @@ public class OrderResource {
     @GET
     @Path("/{id}/events")
     @Produces(MediaType.SERVER_SENT_EVENTS)
-    @RestSseElementType(MediaType.TEXT_PLAIN)
     @Blocking
     public Multi<String> streamStatus(@PathParam("id") UUID id) {
         Order order = service.findById(new OrderId(id));

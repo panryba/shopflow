@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { DecimalPipe, DatePipe } from '@angular/common';
+import { DecimalPipe, DatePipe, NgOptimizedImage } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
@@ -32,7 +32,7 @@ const STATUS_CONFIG: Record<HistoryStatus, { label: string; icon: string; color:
 @Component({
   selector: 'app-order-detail',
   standalone: true,
-  imports: [TableModule, TagModule, TimelineModule, DecimalPipe, DatePipe, SagaLivePipe, StatusLabelPipe],
+  imports: [TableModule, TagModule, TimelineModule, DecimalPipe, DatePipe, NgOptimizedImage, SagaLivePipe, StatusLabelPipe],
   templateUrl: './order-detail.component.html',
   styleUrl: './order-detail.component.scss'
 })
@@ -86,8 +86,8 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     return p ? `${p.artist} – ${p.name}` : id.substring(0, 8) + '…';
   }
 
-  productImage(id: string): string {
-    return PRODUCT_MAP.get(id)?.image ?? '';
+  productImage(id: string): string | null {
+    return PRODUCT_MAP.get(id)?.image ?? null;
   }
 
   getSeverity(status: OrderStatus): 'success' | 'info' | 'danger' | 'secondary' {

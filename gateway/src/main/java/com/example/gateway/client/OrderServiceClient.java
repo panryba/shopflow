@@ -18,7 +18,6 @@ import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
-import org.jboss.resteasy.reactive.RestSseElementType;
 
 import java.util.UUID;
 
@@ -35,25 +34,24 @@ public interface OrderServiceClient {
     Response create(String body, @HeaderParam("Idempotency-Key") String idempotencyKey);
 
     @GET
-    @Retry(maxRetries = 3, delay = 200, abortOn = WebApplicationException.class)
+    @Retry(delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response getAll();
 
     @GET
     @Path("/{id}")
-    @Retry(maxRetries = 3, delay = 200, abortOn = WebApplicationException.class)
+    @Retry(delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response getById(@PathParam("id") UUID id);
 
     @PUT
     @Path("/{id}/cancel")
-    @Retry(maxRetries = 3, delay = 200, abortOn = WebApplicationException.class)
+    @Retry(delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response cancel(@PathParam("id") UUID id);
 
     @GET
     @Path("/{id}/events")
     @Produces(MediaType.SERVER_SENT_EVENTS)
-    @RestSseElementType(MediaType.TEXT_PLAIN)
     Multi<String> streamStatus(@PathParam("id") UUID id);
 }

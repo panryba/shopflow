@@ -72,8 +72,8 @@ public class InventoryEventConsumer {
             if (crash) throw new RuntimeException("Simulated consumer crash");
             sleep();
             var avro = message.getPayload();
-            String orderId = avro.getOrderId().toString();
-            String correlationId = avro.getCorrelationId().toString();
+            String orderId = avro.getOrderId();
+            String correlationId = avro.getCorrelationId();
             MDC.put("correlationId", correlationId);
             MDC.put("orderId", orderId);
 

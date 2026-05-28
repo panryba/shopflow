@@ -159,7 +159,7 @@ Downstream response headers are filtered before being returned to clients to pre
 ### Reliability
 
 #### Saga Orchestrator
-The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `CANCELLED`) is persisted in the database, making it recoverable after a restart.
+The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `WAITING_ROLLBACK` → `CANCELLED`) is persisted in the database, making it recoverable after a restart.
 
 #### Transactional Outbox
 The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern). The outbox query uses `FOR UPDATE SKIP LOCKED` so that multiple running instances never pick up the same rows — each pod locks the rows it is processing and other pods skip them entirely.

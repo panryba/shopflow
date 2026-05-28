@@ -164,6 +164,8 @@ The `order-service` owns the entire order lifecycle and drives every step explic
 #### Transactional Outbox
 The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried. Outbox publishing is idempotent — retries may result in duplicate sends, which are handled by idempotent consumers (Inbox pattern). The outbox query uses `FOR UPDATE SKIP LOCKED` so that multiple running instances never pick up the same rows — each pod locks the rows it is processing and other pods skip them entirely.
 
+Failed publishes increment a retry counter and record the last error. Events that exhaust all retries are retained until the cleanup window expires — in production these would trigger an alert and require manual investigation.
+
 #### Idempotent Consumer (Inbox)
 The system operates under at-least-once delivery semantics — all consumers must be idempotent. Every Kafka event handler records the `eventId` in an `inbox_events` table before processing. On redelivery, the duplicate is detected and silently skipped. This makes all consumers safe to retry without risk of double-charging, double-approving, or double-cancelling.
 

@@ -3,8 +3,11 @@ package com.example.order.infrastructure.outbox;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 import java.util.UUID;
+
+import static jakarta.transaction.Transactional.TxType.MANDATORY;
 
 @ApplicationScoped
 public class OutboxService {
@@ -15,6 +18,7 @@ public class OutboxService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Transactional(MANDATORY)
     public void save(String aggregateType, String aggregateId, OutboxEventType eventType, Object event) {
         try {
             OutboxEventEntity entity = OutboxEventEntity.builder()

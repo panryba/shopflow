@@ -42,6 +42,6 @@ public class OutboxRepository implements PanacheRepository<OutboxEventEntity> {
     }
 
     public void deleteProcessed(Instant cutoff) {
-        delete("processed = true and processedAt < ?1", cutoff);
+        delete("(processed = true and processedAt < ?1) or (processed = false and createdAt < ?1)", cutoff);
     }
 }

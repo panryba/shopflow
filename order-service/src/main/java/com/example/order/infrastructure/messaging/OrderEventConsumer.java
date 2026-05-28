@@ -30,14 +30,14 @@ public class OrderEventConsumer {
 
     @Incoming("payment-completed")
     @Blocking
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public CompletionStage<Void> onPaymentCompleted(Message<com.example.order.events.avro.PaymentCompletedEvent> message) {
         try {
             var avro = message.getPayload();
-            setMDC(message, avro.getOrderId().toString());
+            setMDC(message, avro.getOrderId());
             Log.infof("Received payment-completed");
             orchestrator.onPaymentCompleted(new PaymentCompletedEvent(
-                    avro.getEventId().toString(), UUID.fromString(avro.getOrderId().toString()), avro.getCorrelationId().toString()));
+                    avro.getEventId(), UUID.fromString(avro.getOrderId()), avro.getCorrelationId()));
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onPaymentCompleted failed: %s", e.getMessage());
@@ -49,17 +49,17 @@ public class OrderEventConsumer {
 
     @Incoming("payment-failed")
     @Blocking
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public CompletionStage<Void> onPaymentFailed(Message<com.example.order.events.avro.PaymentFailedEvent> message) {
         try {
             var avro = message.getPayload();
-            setMDC(message, avro.getOrderId().toString());
+            setMDC(message, avro.getOrderId());
             Log.infof("Received payment-failed");
             orchestrator.onPaymentFailed(new PaymentFailedEvent(
-                    avro.getEventId().toString(),
-                    UUID.fromString(avro.getOrderId().toString()),
-                    avro.getReason() != null ? avro.getReason().toString() : null,
-                    avro.getCorrelationId().toString()));
+                    avro.getEventId(),
+                    UUID.fromString(avro.getOrderId()),
+                        avro.getReason(),
+                    avro.getCorrelationId()));
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onPaymentFailed failed: %s", e.getMessage());
@@ -71,14 +71,14 @@ public class OrderEventConsumer {
 
     @Incoming("inventory-approved")
     @Blocking
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public CompletionStage<Void> onInventoryApproved(Message<com.example.order.events.avro.InventoryApprovedEvent> message) {
         try {
             var avro = message.getPayload();
-            setMDC(message, avro.getOrderId().toString());
+            setMDC(message, avro.getOrderId());
             Log.infof("Received inventory-approved");
             orchestrator.onInventoryApproved(new InventoryApprovedEvent(
-                    avro.getEventId().toString(), UUID.fromString(avro.getOrderId().toString()), avro.getCorrelationId().toString()));
+                    avro.getEventId(), UUID.fromString(avro.getOrderId()), avro.getCorrelationId()));
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onInventoryApproved failed: %s", e.getMessage());
@@ -90,17 +90,17 @@ public class OrderEventConsumer {
 
     @Incoming("inventory-rejected")
     @Blocking
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public CompletionStage<Void> onInventoryRejected(Message<com.example.order.events.avro.InventoryRejectedEvent> message) {
         try {
             var avro = message.getPayload();
-            setMDC(message, avro.getOrderId().toString());
+            setMDC(message, avro.getOrderId());
             Log.infof("Received inventory-rejected");
             orchestrator.onInventoryRejected(new InventoryRejectedEvent(
-                    avro.getEventId().toString(),
-                    UUID.fromString(avro.getOrderId().toString()),
-                    avro.getReason() != null ? avro.getReason().toString() : null,
-                    avro.getCorrelationId().toString()));
+                    avro.getEventId(),
+                    UUID.fromString(avro.getOrderId()),
+                    avro.getReason(),
+                    avro.getCorrelationId()));
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onInventoryRejected failed: %s", e.getMessage());
@@ -112,16 +112,16 @@ public class OrderEventConsumer {
 
     @Incoming("payment-rollback-completed")
     @Blocking
-    @Retry(maxRetries = 3, delay = 500, jitter = 200, retryOn = OptimisticLockException.class)
+    @Retry(delay = 500, retryOn = OptimisticLockException.class)
     public CompletionStage<Void> onPaymentRolledBack(Message<com.example.order.events.avro.PaymentRollbackCompletedEvent> message) {
         try {
             var avro = message.getPayload();
-            setMDC(message, avro.getOrderId().toString());
+            setMDC(message, avro.getOrderId());
             Log.infof("Received payment-rollback-completed");
             orchestrator.onPaymentRolledBack(new PaymentRollbackCompletedEvent(
-                    avro.getEventId().toString(),
-                    UUID.fromString(avro.getOrderId().toString()),
-                    avro.getCorrelationId().toString()));
+                    avro.getEventId(),
+                    UUID.fromString(avro.getOrderId()),
+                    avro.getCorrelationId()));
             return message.ack();
         } catch (Exception e) {
             Log.errorf(e, "onPaymentRolledBack failed: %s", e.getMessage());

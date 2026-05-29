@@ -112,130 +112,100 @@ public class OrderSagaOrchestrator {
     public void onPaymentCompleted(PaymentCompletedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)) return;
 
-        try {
-            OrderSagaState saga = sagaRepository.find(event.orderId());
-            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.pay(new OrderId(event.orderId()));
-            statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAID));
+        service.pay(new OrderId(event.orderId()));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAID));
 
-            saga.setStep(OrderSagaState.SagaStep.WAITING_INVENTORY);
-            saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
+        saga.setStep(OrderSagaState.SagaStep.WAITING_INVENTORY);
+        saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
 
-            outbox.save(
-                    Order.class.getSimpleName(),
-                    event.orderId().toString(),
-                    OutboxEventType.INVENTORY_REQUEST,
-                    InventoryRequestEvent.of(event.orderId(), event.correlationId())
-            );
+        outbox.save(
+                Order.class.getSimpleName(),
+                event.orderId().toString(),
+                OutboxEventType.INVENTORY_REQUEST,
+                InventoryRequestEvent.of(event.orderId(), event.correlationId())
+        );
 
-            Log.infof("Payment completed step=WAITING_INVENTORY");
-            inbox.markProcessed(event.eventId());
-
-        } catch (Exception e) {
-            inbox.markFailed(event.eventId(), e.getMessage());
-            throw e;
-        }
+        Log.infof("Payment completed step=WAITING_INVENTORY");
+        inbox.markProcessed(event.eventId());
     }
 
     @Transactional
     public void onPaymentFailed(PaymentFailedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_FAILED)) return;
 
-        try {
-            OrderSagaState saga = sagaRepository.find(event.orderId());
-            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.failPayment(new OrderId(event.orderId()));
-            statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_FAILED));
-            saga.setStep(OrderSagaState.SagaStep.CANCELLED);
-            sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
-            metrics.sagaCancelled(event.orderId());
+        service.failPayment(new OrderId(event.orderId()));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_FAILED));
+        saga.setStep(OrderSagaState.SagaStep.CANCELLED);
+        sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+        metrics.sagaCancelled(event.orderId());
 
-            Log.infof("Payment failed step=CANCELLED reason=%s", event.reason());
-            inbox.markProcessed(event.eventId());
-
-        } catch (Exception e) {
-            inbox.markFailed(event.eventId(), e.getMessage());
-            throw e;
-        }
+        Log.infof("Payment failed step=CANCELLED reason=%s", event.reason());
+        inbox.markProcessed(event.eventId());
     }
 
     @Transactional
     public void onInventoryApproved(InventoryApprovedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_APPROVED)) return;
 
-        try {
-            OrderSagaState saga = sagaRepository.find(event.orderId());
-            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.approveInventory(new OrderId(event.orderId()));
-            statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_APPROVED));
-            saga.setStep(OrderSagaState.SagaStep.COMPLETED);
-            sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
-            metrics.sagaCompleted(event.orderId());
+        service.approveInventory(new OrderId(event.orderId()));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_APPROVED));
+        saga.setStep(OrderSagaState.SagaStep.COMPLETED);
+        sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+        metrics.sagaCompleted(event.orderId());
 
-            Log.infof("Inventory approved step=COMPLETED");
-            inbox.markProcessed(event.eventId());
-
-        } catch (Exception e) {
-            inbox.markFailed(event.eventId(), e.getMessage());
-            throw e;
-        }
+        Log.infof("Inventory approved step=COMPLETED");
+        inbox.markProcessed(event.eventId());
     }
 
     @Transactional
     public void onInventoryRejected(InventoryRejectedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_REJECTED)) return;
 
-        try {
-            OrderSagaState saga = sagaRepository.find(event.orderId());
-            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            service.rejectInventory(new OrderId(event.orderId()));
-            statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_REJECTED));
+        service.rejectInventory(new OrderId(event.orderId()));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_REJECTED));
 
-            outbox.save(
-                    Order.class.getSimpleName(),
-                    event.orderId().toString(),
-                    OutboxEventType.PAYMENT_ROLLBACK,
-                    PaymentRollbackEvent.of(event.orderId(), event.correlationId())
-            );
+        outbox.save(
+                Order.class.getSimpleName(),
+                event.orderId().toString(),
+                OutboxEventType.PAYMENT_ROLLBACK,
+                PaymentRollbackEvent.of(event.orderId(), event.correlationId())
+        );
 
-            saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
-            saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
+        saga.setStep(OrderSagaState.SagaStep.WAITING_ROLLBACK);
+        saga.setDeadline(Instant.now().plusSeconds(stepTimeoutSeconds));
 
-            Log.infof("Inventory rejected step=WAITING_ROLLBACK reason=%s", event.reason());
-            inbox.markProcessed(event.eventId());
-
-        } catch (Exception e) {
-            inbox.markFailed(event.eventId(), e.getMessage());
-            throw e;
-        }
+        Log.infof("Inventory rejected step=WAITING_ROLLBACK reason=%s", event.reason());
+        inbox.markProcessed(event.eventId());
     }
 
     @Transactional
     public void onPaymentRolledBack(PaymentRollbackCompletedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_ROLLBACK_COMPLETED)) return;
 
-        try {
-            OrderSagaState saga = sagaRepository.find(event.orderId());
-            if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
+        OrderSagaState saga = sagaRepository.find(event.orderId());
+        if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
-            historyService.record(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK);
-            statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK));
-            saga.setStep(OrderSagaState.SagaStep.CANCELLED);
-            sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
-            metrics.sagaCancelled(event.orderId());
-            metrics.sagaCompensated();
+        historyService.record(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK);
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK));
+        saga.setStep(OrderSagaState.SagaStep.CANCELLED);
+        sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
+        metrics.sagaCancelled(event.orderId());
+        metrics.sagaCompensated();
 
-            Log.infof("Payment rolled back step=CANCELLED");
-            inbox.markProcessed(event.eventId());
-
-        } catch (Exception e) {
-            inbox.markFailed(event.eventId(), e.getMessage());
-            throw e;
-        }
+        Log.infof("Payment rolled back step=CANCELLED");
+        inbox.markProcessed(event.eventId());
     }
 
     @Transactional

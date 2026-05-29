@@ -3,12 +3,12 @@ package com.example.order.infrastructure.inbox;
 import com.example.order.infrastructure.observability.OrderMetrics;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.persistence.PersistenceException;
+import jakarta.transaction.Transactional;
 
 import java.time.Instant;
 
-import static jakarta.transaction.Transactional.TxType.REQUIRES_NEW;
+import static jakarta.transaction.Transactional.TxType.MANDATORY;
 
 @ApplicationScoped
 public class InboxService {
@@ -19,7 +19,7 @@ public class InboxService {
     @Inject
     OrderMetrics metrics;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(MANDATORY)
     public boolean receive(String eventId, InboxEventType type) {
         try {
             repository.persist(
@@ -38,17 +38,9 @@ public class InboxService {
         }
     }
 
-    @Transactional
+    @Transactional(MANDATORY)
     public void markProcessed(String eventId) {
         InboxEvent event = repository.findById(eventId);
         event.setStatus(InboxEvent.Status.PROCESSED);
-    }
-
-    @Transactional(REQUIRES_NEW)
-    public void markFailed(String eventId, String error) {
-        InboxEvent event = repository.findById(eventId);
-        if (event == null) return;
-        event.setStatus(InboxEvent.Status.FAILED);
-        event.setErrorMessage(error);
     }
 }

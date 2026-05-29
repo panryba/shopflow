@@ -29,12 +29,8 @@ public class InboxEvent {
     @Column(nullable = false)
     private Status status;
 
-    @Column(name = "error_message")
-    private String errorMessage;
-
-    public enum Status {
+public enum Status {
         RECEIVED,
-        PROCESSED,
-        FAILED
+        PROCESSED
     }
 }

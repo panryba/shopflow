@@ -39,6 +39,8 @@ public class OrderEventConsumer {
             orchestrator.onPaymentCompleted(new PaymentCompletedEvent(
                     avro.getEventId(), UUID.fromString(avro.getOrderId()), avro.getCorrelationId()));
             return message.ack();
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             Log.errorf(e, "onPaymentCompleted failed: %s", e.getMessage());
             return message.nack(e);
@@ -61,6 +63,8 @@ public class OrderEventConsumer {
                         avro.getReason(),
                     avro.getCorrelationId()));
             return message.ack();
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             Log.errorf(e, "onPaymentFailed failed: %s", e.getMessage());
             return message.nack(e);
@@ -80,6 +84,8 @@ public class OrderEventConsumer {
             orchestrator.onInventoryApproved(new InventoryApprovedEvent(
                     avro.getEventId(), UUID.fromString(avro.getOrderId()), avro.getCorrelationId()));
             return message.ack();
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             Log.errorf(e, "onInventoryApproved failed: %s", e.getMessage());
             return message.nack(e);
@@ -102,6 +108,8 @@ public class OrderEventConsumer {
                     avro.getReason(),
                     avro.getCorrelationId()));
             return message.ack();
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             Log.errorf(e, "onInventoryRejected failed: %s", e.getMessage());
             return message.nack(e);
@@ -123,6 +131,8 @@ public class OrderEventConsumer {
                     UUID.fromString(avro.getOrderId()),
                     avro.getCorrelationId()));
             return message.ack();
+        } catch (OptimisticLockException e) {
+            throw e;
         } catch (Exception e) {
             Log.errorf(e, "onPaymentRolledBack failed: %s", e.getMessage());
             return message.nack(e);

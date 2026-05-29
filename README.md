@@ -205,7 +205,7 @@ Every request receives an `X-Correlation-ID` header (generated if absent). It is
 
 ## JWT Authentication
 
-JWT signature validation is enforced at the gateway only. Downstream services trust the forwarded token and use it only for identity extraction and authorization context. The gateway uses `quarkus-oidc` with Keycloak as the OIDC provider. Unauthenticated requests return `401`; insufficient role returns `403` — both as structured `GatewayErrorResponse` JSON.
+JWT validation is enforced at both the gateway and the order-service. The gateway validates via `quarkus-oidc` with Keycloak as the OIDC provider. The order-service validates independently using SmallRye JWT against Keycloak's public key — it does not blindly trust the forwarded token. Unauthenticated requests return `401 Unauthorized`; insufficient role returns `403 Forbidden`.
 
 The raw `Authorization: Bearer <token>` header is forwarded downstream so services can extract user identity without re-validating the token against Keycloak. Role-based access: order endpoints require any authenticated user; `PUT /api/inventory/mode` requires admin role.
 

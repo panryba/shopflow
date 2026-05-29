@@ -150,11 +150,11 @@ Payment and inventory services are intentionally thin — their sole responsibil
 The `order-service` domain layer models the business explicitly: `Order` is the aggregate root, `OrderItem` is a child entity, `Money` and `OrderId` are value objects, and `OrderStatus` is a state enum. The `Order` aggregate enforces all state transitions internally — `pay()`, `approveInventory()`, `failPayment()` etc. guard against invalid transitions and throw if the current status is unexpected. Business rules live in the domain, not in services or consumers.
 
 #### API Gateway
-A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service and `/api/inventory/mode` to the inventory-service via typed REST clients.
+A dedicated Quarkus service (port 8090) acts as the single entry point for all clients. It routes `/api/orders/**` to the order-service, `/api/inventory/**` and `/api/payment/**` to their respective services via typed REST clients. Admin control endpoints (acceptance mode, crash mode, step delay) are exposed through the same gateway and require the `admin` role.
 
 The gateway generates or propagates `X-Correlation-ID` on every request and forwards it to downstream services, enabling distributed tracing across synchronous HTTP requests and asynchronous Kafka events.
 
-Downstream response headers are filtered before being returned to clients to prevent HTTP framing conflicts. Unreachable downstream services map to `502 Bad Gateway`; open circuits return `503 Service Unavailable`; downstream `4xx` responses pass through with their original status code.
+Downstream response headers are filtered before being returned to clients to prevent HTTP framing conflicts. Unreachable downstream services map to `502 Bad Gateway`; open circuits return `503 Service Unavailable`; downstream HTTP error responses pass through with their original status code.
 
 ### Reliability
 
@@ -189,13 +189,17 @@ The `Order` aggregate uses optimistic locking — every update verifies the enti
 ### Messaging
 
 #### Avro + Schema Registry
-All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are auto-registered on first publish. This enforces a contract between producers and consumers and enables schema evolution without breaking existing consumers.
+All Kafka messages are serialized with Apache Avro against schemas registered in Apicurio Schema Registry. Schemas are defined as `.avsc` files and code-generated into typed Java classes — producers and consumers work with strongly typed event records rather than generic maps. Schemas are auto-registered on first publish. This enforces a contract between producers and consumers and enables backward-compatible schema evolution without breaking existing consumers.
 
 #### Partition Key Consistency
-Every outgoing Kafka message is keyed by `orderId`. Kafka guarantees that all messages with the same key are routed to the same partition and consumed in order. This means all events for a single order — `payment-request`, `payment-completed`, `inventory-request`, `inventory-approved` — are processed sequentially by the consumer, with no risk of out-of-order state transitions. Each service subscribes under its own consumer group ID, ensuring every message is processed exactly once per service regardless of how many instances are running — Kafka assigns each partition to exactly one instance within a group.
+Every outgoing Kafka message is keyed by `orderId`. Within each topic, all messages for the same order always land on the same partition and are processed by the same consumer instance — preventing concurrent processing of events for the same order.
+
+Because the saga is strictly sequential — each step is only published after the previous one completes — only one message per order is ever in flight at a time, so events are always processed in the correct order.
+
+Each downstream service has its own consumer group. Kafka delivers every message to each group independently, so adding more instances of a service scales throughput without messages being skipped or duplicated.
 
 #### Correlation ID Tracing
-Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as a Kafka record header on every outgoing event and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events.
+Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as an HTTP header on every downstream call and as a Kafka record header on every outgoing event, and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events. The ID is echoed back in the response header so the client can use it for Grafana log lookups.
 
 ---
 

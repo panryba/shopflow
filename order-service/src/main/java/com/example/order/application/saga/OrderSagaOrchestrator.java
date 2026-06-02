@@ -75,7 +75,7 @@ public class OrderSagaOrchestrator {
 
             service.create(order);
 
-            sagaRepository.save(
+            sagaRepository.persist(
                     OrderSagaState.builder()
                             .orderId(order.getId().value())
                             .step(OrderSagaState.SagaStep.WAITING_PAYMENT)
@@ -112,7 +112,7 @@ public class OrderSagaOrchestrator {
     public void onPaymentCompleted(PaymentCompletedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)) return;
 
-        OrderSagaState saga = sagaRepository.find(event.orderId());
+        OrderSagaState saga = sagaRepository.findById(event.orderId());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.pay(new OrderId(event.orderId()));
@@ -136,7 +136,7 @@ public class OrderSagaOrchestrator {
     public void onPaymentFailed(PaymentFailedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_FAILED)) return;
 
-        OrderSagaState saga = sagaRepository.find(event.orderId());
+        OrderSagaState saga = sagaRepository.findById(event.orderId());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.failPayment(new OrderId(event.orderId()));
@@ -153,7 +153,7 @@ public class OrderSagaOrchestrator {
     public void onInventoryApproved(InventoryApprovedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_APPROVED)) return;
 
-        OrderSagaState saga = sagaRepository.find(event.orderId());
+        OrderSagaState saga = sagaRepository.findById(event.orderId());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.approveInventory(new OrderId(event.orderId()));
@@ -170,7 +170,7 @@ public class OrderSagaOrchestrator {
     public void onInventoryRejected(InventoryRejectedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.INVENTORY_REJECTED)) return;
 
-        OrderSagaState saga = sagaRepository.find(event.orderId());
+        OrderSagaState saga = sagaRepository.findById(event.orderId());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.rejectInventory(new OrderId(event.orderId()));
@@ -194,7 +194,7 @@ public class OrderSagaOrchestrator {
     public void onPaymentRolledBack(PaymentRollbackCompletedEvent event) {
         if (!inbox.receive(event.eventId(), InboxEventType.PAYMENT_ROLLBACK_COMPLETED)) return;
 
-        OrderSagaState saga = sagaRepository.find(event.orderId());
+        OrderSagaState saga = sagaRepository.findById(event.orderId());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         historyService.record(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK);
@@ -210,7 +210,7 @@ public class OrderSagaOrchestrator {
 
     @Transactional
     public void cancelByUser(OrderId orderId) {
-        OrderSagaState saga = sagaRepository.find(orderId.value());
+        OrderSagaState saga = sagaRepository.findById(orderId.value());
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED
                 || saga.getStep() == OrderSagaState.SagaStep.COMPLETED) return;
 

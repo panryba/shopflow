@@ -15,14 +15,6 @@ public class OrderSagaRepository implements PanacheRepositoryBase<OrderSagaState
     @Inject
     EntityManager em;
 
-    public void save(OrderSagaState saga) {
-        persist(saga);
-    }
-
-    public OrderSagaState find(UUID orderId) {
-        return findById(orderId);
-    }
-
     @SuppressWarnings("unchecked")
     public List<OrderSagaState> findExpired(Instant now) {
         return em.createNativeQuery("""

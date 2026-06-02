@@ -4,7 +4,6 @@ import com.example.order.application.port.output.OrderHistoryRecorder;
 import com.example.order.domain.model.HistoryStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,11 +12,10 @@ import java.util.UUID;
 @ApplicationScoped
 public class OrderStatusHistoryService implements OrderHistoryRecorder {
 
-    @Inject EntityManager em;
     @Inject OrderStatusHistoryRepository repository;
 
     public void record(UUID orderId, HistoryStatus status) {
-        em.persist(OrderStatusHistory.builder()
+        repository.persist(OrderStatusHistory.builder()
                 .id(UUID.randomUUID())
                 .orderId(orderId)
                 .status(status)
@@ -26,6 +24,6 @@ public class OrderStatusHistoryService implements OrderHistoryRecorder {
     }
 
     public List<OrderStatusHistory> findByOrderId(UUID orderId) {
-        return repository.find("orderId = ?1 order by occurredAt asc", orderId).list();
+        return repository.findByOrderId(orderId);
     }
 }

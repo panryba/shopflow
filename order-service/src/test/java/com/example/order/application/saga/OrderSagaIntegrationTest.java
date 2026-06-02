@@ -152,13 +152,13 @@ class OrderSagaIntegrationTest {
 
     @Transactional
     void expireSaga(UUID orderId) {
-        OrderSagaState saga = sagaRepository.find(orderId);
+        OrderSagaState saga = sagaRepository.findById(orderId);
         saga.setDeadline(Instant.now().minusSeconds(60));
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     void assertSagaStep(UUID orderId, OrderSagaState.SagaStep expected) {
-        OrderSagaState saga = sagaRepository.find(orderId);
+        OrderSagaState saga = sagaRepository.findById(orderId);
         assertNotNull(saga, "Saga not found for orderId=" + orderId);
         assertEquals(expected, saga.getStep());
     }

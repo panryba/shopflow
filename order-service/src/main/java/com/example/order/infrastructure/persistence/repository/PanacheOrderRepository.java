@@ -48,6 +48,7 @@ public class PanacheOrderRepository implements OrderRepository, PanacheRepositor
     }
 
     @Override
+    @Transactional(Transactional.TxType.MANDATORY)
     public void update(Order order) {
         OrderEntity managed = findByIdOptional(order.getId().value())
                 .orElseThrow(() -> new NotFoundException("Order not found: " + order.getId().value()));

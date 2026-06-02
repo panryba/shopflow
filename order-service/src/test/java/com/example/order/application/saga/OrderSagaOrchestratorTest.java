@@ -58,7 +58,7 @@ class OrderSagaOrchestratorTest {
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_PAYMENT);
 
         when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)).thenReturn(true);
-        when(sagaRepository.find(orderId)).thenReturn(saga);
+        when(sagaRepository.findById(orderId)).thenReturn(saga);
 
         orchestrator.onPaymentCompleted(event);
 
@@ -86,7 +86,7 @@ class OrderSagaOrchestratorTest {
         PaymentCompletedEvent event = PaymentCompletedEvent.of(orderId, "corr-1");
 
         when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_COMPLETED)).thenReturn(true);
-        when(sagaRepository.find(orderId)).thenReturn(sagaInStep(orderId, OrderSagaState.SagaStep.CANCELLED));
+        when(sagaRepository.findById(orderId)).thenReturn(sagaInStep(orderId, OrderSagaState.SagaStep.CANCELLED));
 
         orchestrator.onPaymentCompleted(event);
 
@@ -100,7 +100,7 @@ class OrderSagaOrchestratorTest {
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_PAYMENT);
 
         when(inbox.receive(event.eventId(), InboxEventType.PAYMENT_FAILED)).thenReturn(true);
-        when(sagaRepository.find(orderId)).thenReturn(saga);
+        when(sagaRepository.findById(orderId)).thenReturn(saga);
 
         orchestrator.onPaymentFailed(event);
 
@@ -116,7 +116,7 @@ class OrderSagaOrchestratorTest {
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_INVENTORY);
 
         when(inbox.receive(event.eventId(), InboxEventType.INVENTORY_APPROVED)).thenReturn(true);
-        when(sagaRepository.find(orderId)).thenReturn(saga);
+        when(sagaRepository.findById(orderId)).thenReturn(saga);
 
         orchestrator.onInventoryApproved(event);
 
@@ -132,7 +132,7 @@ class OrderSagaOrchestratorTest {
         OrderSagaState saga = sagaInStep(orderId, OrderSagaState.SagaStep.WAITING_INVENTORY);
 
         when(inbox.receive(event.eventId(), InboxEventType.INVENTORY_REJECTED)).thenReturn(true);
-        when(sagaRepository.find(orderId)).thenReturn(saga);
+        when(sagaRepository.findById(orderId)).thenReturn(saga);
 
         orchestrator.onInventoryRejected(event);
 

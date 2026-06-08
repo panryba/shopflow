@@ -97,6 +97,8 @@
   background: #5a6270 !important;
   border-color: #5a6270 !important;
   color: #ffffff !important;
+  padding-top: 0.3rem !important;
+  padding-bottom: 0.3rem !important;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -109,16 +111,20 @@
 ::ng-deep .csv-btn.p-button {
   background: #e2e8f0;
   border-color: #cbd5e1;
-  color: #374151;
+  color: #374151 !important;
   font-size: 0.8rem;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 
   &:hover {
     background: #cbd5e1;
     border-color: #b8c4d6;
+    color: #374151 !important;
   }
 
-  .p-button-icon {
-    color: #374151;
+  .p-button-icon,
+  .p-button-label {
+    color: #374151 !important;
   }
 }
 

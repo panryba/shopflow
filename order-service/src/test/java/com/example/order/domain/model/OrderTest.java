@@ -26,26 +26,26 @@ class OrderTest {
 
     @Test
     void addItemIncreasesItemCount() {
-        order.addItem(UUID.randomUUID(), 2, new BigDecimal("34.99"));
+        order.addItem(UUID.randomUUID(), 2, new BigDecimal("34.99"), null, null);
         assertEquals(1, order.getItems().size());
     }
 
     @Test
     void addItemWithZeroQuantityThrows() {
         assertThrows(IllegalArgumentException.class,
-                () -> order.addItem(UUID.randomUUID(), 0, new BigDecimal("34.99")));
+                () -> order.addItem(UUID.randomUUID(), 0, new BigDecimal("34.99"), null, null));
     }
 
     @Test
     void addItemWithNegativeQuantityThrows() {
         assertThrows(IllegalArgumentException.class,
-                () -> order.addItem(UUID.randomUUID(), -1, new BigDecimal("34.99")));
+                () -> order.addItem(UUID.randomUUID(), -1, new BigDecimal("34.99"), null, null));
     }
 
     @Test
     void totalAmountSumsAllItems() {
-        order.addItem(UUID.randomUUID(), 2, new BigDecimal("34.99"));
-        order.addItem(UUID.randomUUID(), 1, new BigDecimal("29.99"));
+        order.addItem(UUID.randomUUID(), 2, new BigDecimal("34.99"), null, null);
+        order.addItem(UUID.randomUUID(), 1, new BigDecimal("29.99"), null, null);
 
         Money total = order.totalAmount();
 

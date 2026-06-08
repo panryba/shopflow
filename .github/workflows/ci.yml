@@ -21,7 +21,7 @@ jobs:
           cache: maven
 
       - name: Make Maven wrappers executable
-        run: chmod +x order-service/mvnw payment-service/mvnw inventory-service/mvnw gateway/mvnw
+        run: chmod +x order-service/mvnw payment-service/mvnw inventory-service/mvnw gateway/mvnw product-service/mvnw
 
       - name: Build order-service
         run: cd order-service && ./mvnw package -DskipTests
@@ -34,6 +34,9 @@ jobs:
 
       - name: Build gateway
         run: cd gateway && ./mvnw package -DskipTests
+
+      - name: Build product-service
+        run: cd product-service && ./mvnw package -DskipTests
 
       - name: Test order-service
         run: cd order-service && ./mvnw test
@@ -52,6 +55,9 @@ jobs:
             echo "No tests found, skipping"
           fi
 
+      - name: Test product-service
+        run: cd product-service && ./mvnw test
+
       - name: Cache compiled artifacts
         uses: actions/cache/save@v4
         with:
@@ -60,6 +66,7 @@ jobs:
             payment-service/target/quarkus-app/
             inventory-service/target/quarkus-app/
             gateway/target/quarkus-app/
+            product-service/target/
           key: compiled-${{ github.sha }}
 
   build-frontend:
@@ -103,6 +110,7 @@ jobs:
             payment-service/target/quarkus-app/
             inventory-service/target/quarkus-app/
             gateway/target/quarkus-app/
+            product-service/target/
           key: compiled-${{ github.sha }}
 
       - name: Set up Node 24
@@ -170,3 +178,13 @@ jobs:
           tags: |
             tbzowka/frontend:latest
             tbzowka/frontend:${{ github.sha }}
+
+      - name: Build and push product-service
+        uses: docker/build-push-action@v6
+        with:
+          context: product-service
+          file: product-service/Dockerfile
+          push: true
+          tags: |
+            tbzowka/product-service:latest
+            tbzowka/product-service:${{ github.sha }}

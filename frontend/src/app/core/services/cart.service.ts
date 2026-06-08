@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { Product } from '../constants/products';
+import { Product } from '../models/product.model';
 
 export interface CartItem {
   product: Product;

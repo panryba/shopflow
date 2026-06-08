@@ -1,4 +1,5 @@
 import { Component, inject, effect, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DecimalPipe, NgOptimizedImage } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -7,7 +8,7 @@ import { CarouselModule } from 'primeng/carousel';
 import { MessageService } from 'primeng/api';
 import { OrderService } from '../../core/services/order.service';
 import { CartService } from '../../core/services/cart.service';
-import { PRODUCTS } from '../../core/constants/products';
+import { ProductService } from '../../core/services/product.service';
 
 @Component({
   selector: 'app-order-create',
@@ -20,10 +21,11 @@ export class OrderCreateComponent {
   private orderService = inject(OrderService);
   private router = inject(Router);
   private messageService = inject(MessageService);
+  private productService = inject(ProductService);
 
   protected cartService = inject(CartService);
 
-  readonly products = PRODUCTS;
+  readonly products = toSignal(this.productService.getAll(), { initialValue: [] });
   readonly submitting = signal(false);
 
   constructor() {
@@ -44,7 +46,9 @@ export class OrderCreateComponent {
     const items = this.cartService.cart().map(i => ({
       productId: i.product.id,
       quantity: i.quantity,
-      price: i.product.price
+      price: i.product.price,
+      productName: i.product.title,
+      imageUrl: i.product.imageUrl
     }));
     if (!items.length) return;
 

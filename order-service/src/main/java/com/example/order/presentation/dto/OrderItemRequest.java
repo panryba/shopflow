@@ -17,5 +17,9 @@ public record OrderItemRequest(
 
         @NotNull
         @DecimalMin("0.01")
-        BigDecimal price
+        BigDecimal price,
+
+        String productName,
+
+        String imageUrl
 ) {}

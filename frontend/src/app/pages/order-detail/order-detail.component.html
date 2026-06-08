@@ -62,10 +62,10 @@
           <tr>
             <td>
               <div class="product-cell">
-                @if (productImage(item.productId); as img) {
-                  <img [ngSrc]="img" [alt]="productName(item.productId)" class="product-thumb" width="36" height="36" />
+                @if (item.imageUrl) {
+                  <img [ngSrc]="item.imageUrl" [alt]="item.productName || ''" class="product-thumb" width="36" height="36" />
                 }
-                {{ productName(item.productId) }}
+                {{ item.productName || item.productId.substring(0, 8) + '…' }}
               </div>
             </td>
             <td>{{ item.quantity }}</td>

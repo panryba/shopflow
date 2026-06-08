@@ -10,5 +10,7 @@ public record OrderItem(
         OrderId orderId,
         UUID productId,
         int quantity,
-        Money price
+        Money price,
+        String productName,
+        String imageUrl
 ) {}

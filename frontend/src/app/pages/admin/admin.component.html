@@ -2,6 +2,29 @@
   <h2 class="page-title">Admin Controls</h2>
 
   <div class="card">
+    <p class="card-label"><i class="pi pi-database"></i> Product Catalogue</p>
+    <p class="card-hint">Import vinyl records from a CSV file. Replaces the entire catalogue on each import.</p>
+    <div class="import-row">
+      <input #fileInput type="file" accept=".csv" class="hidden-input" (change)="onFileChange($event)" />
+      <p-button label="Choose CSV" icon="pi pi-upload" severity="secondary" (click)="fileInput.click()" />
+      @if (selectedFile()) {
+        <span class="file-name">{{ selectedFile()!.name }}</span>
+      }
+      <p-button label="Import" icon="pi pi-check"
+                [loading]="importing()" [disabled]="!selectedFile() || importing()"
+                (click)="importCatalogue()" />
+    </div>
+    @if (importResult()) {
+      <div class="import-result" [class.import-result--warn]="importResult()!.skipped > 0">
+        <span>Imported: <strong>{{ importResult()!.imported }}</strong></span>
+        @if (importResult()!.skipped > 0) {
+          <span>Skipped: <strong>{{ importResult()!.skipped }}</strong></span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="card">
     <p class="card-label"><i class="pi pi-shield"></i> Acceptance modes</p>
     <p class="card-hint">Disable to force all requests to be rejected, regardless of order amount or inventory state.</p>
     <div class="crash-row">

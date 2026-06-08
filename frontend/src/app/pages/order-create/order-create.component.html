@@ -4,16 +4,16 @@
   <div class="shop-layout">
 
     <div class="catalog">
-      <p-carousel [value]="products" [numVisible]="3" [numScroll]="1" [circular]="true"
+      <p-carousel [value]="products()" [numVisible]="3" [numScroll]="1" [circular]="true"
                   [responsiveOptions]="responsiveOptions">
         <ng-template let-product pTemplate="item">
           <div class="product-card">
             <div class="product-img-wrap">
-              <img [ngSrc]="product.image" [alt]="product.artist + ' – ' + product.name" fill sizes="(max-width: 768px) 90vw, 30vw" />
+              <img [ngSrc]="product.imageUrl" [alt]="product.artist + ' – ' + product.title" fill sizes="(max-width: 768px) 90vw, 30vw" />
             </div>
             <div class="product-info">
               <p class="artist">{{ product.artist }}</p>
-              <p class="album">{{ product.name }}</p>
+              <p class="album">{{ product.title }}</p>
               <p class="price">{{ product.price | number:'1.2-2' }} USD</p>
             </div>
             <p-button label="Add to Cart" icon="pi pi-shopping-cart" styleClass="w-full btn-add-cart"
@@ -33,9 +33,9 @@
         } @else {
           @for (item of cartService.cart(); track item.product.id) {
             <div class="cart-item">
-              <img [ngSrc]="item.product.image" [alt]="item.product.name" width="44" height="44" />
+              <img [ngSrc]="item.product.imageUrl" [alt]="item.product.title" width="44" height="44" />
               <div class="item-info">
-                <p class="item-name">{{ item.product.artist }} – {{ item.product.name }}</p>
+                <p class="item-name">{{ item.product.artist }} – {{ item.product.title }}</p>
                 <p class="item-price">{{ item.product.price | number:'1.2-2' }} USD</p>
               </div>
               <div class="qty-control">
@@ -49,7 +49,7 @@
                         (click)="cartService.remove(item.product.id)" />
             </div>
           }
-*
+
           <div class="cart-footer">
             <div class="total-row">
               <span>Total</span>

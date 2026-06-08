@@ -49,9 +49,9 @@ public class Order {
         this.username = username;
     }
 
-    public void addItem(UUID productId, int quantity, BigDecimal price) {
+    public void addItem(UUID productId, int quantity, BigDecimal price, String productName, String imageUrl) {
         if (quantity <= 0) throw new IllegalArgumentException();
-        items.add(new OrderItem(UUID.randomUUID(), this.id, productId, quantity, new Money(price)));
+        items.add(new OrderItem(UUID.randomUUID(), this.id, productId, quantity, new Money(price), productName, imageUrl));
     }
 
     public Money totalAmount() {

@@ -7,7 +7,6 @@ import { TagModule } from 'primeng/tag';
 import { TimelineModule } from 'primeng/timeline';
 import { OrderService } from '../../core/services/order.service';
 import { HistoryStatus, OrderResponse, OrderStatus } from '../../core/models/order.model';
-import { PRODUCT_MAP } from '../../core/constants/products';
 import { SagaLivePipe } from '../../core/pipes/saga-live.pipe';
 import { StatusLabelPipe } from '../../core/pipes/status-label.pipe';
 
@@ -79,15 +78,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.sub?.unsubscribe();
-  }
-
-  productName(id: string): string {
-    const p = PRODUCT_MAP.get(id);
-    return p ? `${p.artist} – ${p.name}` : id.substring(0, 8) + '…';
-  }
-
-  productImage(id: string): string | null {
-    return PRODUCT_MAP.get(id)?.image ?? null;
   }
 
   getSeverity(status: OrderStatus): 'success' | 'info' | 'danger' | 'secondary' {

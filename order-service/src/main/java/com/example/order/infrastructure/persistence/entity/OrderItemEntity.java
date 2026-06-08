@@ -25,6 +25,12 @@ public class OrderItemEntity {
 
     private BigDecimal price;
 
+    @Column(name = "product_name")
+    private String productName;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     private OrderEntity order;

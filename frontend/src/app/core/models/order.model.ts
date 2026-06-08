@@ -13,6 +13,8 @@ export interface OrderItemRequest {
   productId: string;
   quantity: number;
   price: number;
+  productName?: string;
+  imageUrl?: string;
 }
 
 export interface CreateOrderRequest {
@@ -23,6 +25,8 @@ export interface OrderItemResponse {
   productId: string;
   quantity: number;
   price: number;
+  productName?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface StatusHistoryEntry {

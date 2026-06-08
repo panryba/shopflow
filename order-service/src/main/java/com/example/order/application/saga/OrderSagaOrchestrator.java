@@ -70,7 +70,7 @@ public class OrderSagaOrchestrator {
             order.setIdempotencyKey(idempotencyKey);
             order.setUserId(customerId);
             order.setUsername(username);
-            request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price()));
+            request.items().forEach(i -> order.addItem(i.productId(), i.quantity(), i.price(), i.productName(), i.imageUrl()));
             var total = order.totalAmount();
 
             service.create(order);

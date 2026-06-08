@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
 
 ---
 
@@ -86,6 +86,7 @@ graph TB
         OS["Order Service :8080<br/>(Saga Orchestrator)"]
         PS[Payment Service :8081]
         IS[Inventory Service :8082]
+        PRODS["Product Service :8084<br/>(Spring Boot)"]
     end
 
     subgraph Messaging["Event Bus"]
@@ -95,6 +96,7 @@ graph TB
 
     subgraph Storage
         ODB[(Order DB<br/>PostgreSQL)]
+        PDB[(Product DB<br/>PostgreSQL)]
     end
 
     subgraph Observability
@@ -107,8 +109,10 @@ graph TB
     GW -->|validate token| KC
     GW -->|route| OS
     GW -->|route| IS
+    GW -->|route| PRODS
 
     OS <--> ODB
+    PRODS <--> PDB
     OS -->|payment-request<br/>payment-rollback| K
     OS -->|inventory-request| K
     K -->|payment-completed<br/>payment-failed| OS
@@ -237,6 +241,7 @@ The order-service derives customer identity directly from the JWT subject claim 
 | order-service | 8080 | Saga orchestrator, order lifecycle, REST API |
 | payment-service | 8081 | Simulates payment processing |
 | inventory-service | 8082 | Simulates inventory availability check |
+| product-service | 8084 | Product catalogue — Spring Boot service with Spring Batch CSV import |
 | frontend | 4200 | Angular SPA (served by nginx in Docker) |
 
 ---
@@ -325,7 +330,7 @@ PUT http://localhost:8090/api/inventory/crash?enabled=false # restore
 ## API Reference
 
 All endpoints served by the API Gateway at `http://localhost:8090/api`.  
-Auth: `Bearer` token required. Order endpoints: any authenticated user. Payment and inventory controls (mode, crash, delay): `admin` role only.
+Auth: `Bearer` token required. Order endpoints: any authenticated user. Payment and inventory controls (mode, crash, delay) and product import: `admin` role only.
 
 Full interactive contract: **http://localhost:8090/q/swagger-ui**
 
@@ -343,6 +348,9 @@ Full interactive contract: **http://localhost:8090/q/swagger-ui**
 | PUT | `/api/inventory/crash` | Enable inventory consumer crash mode (`?enabled=true`) |
 | PUT | `/api/payment/delay` | Slow down payment consumer (`?seconds=0\|2\|4\|6\|8`) |
 | PUT | `/api/inventory/delay` | Slow down inventory consumer (`?seconds=0\|2\|4\|6\|8`) |
+| | **Product catalogue** | |
+| GET | `/api/products` | List all products |
+| POST | `/api/products/import` | Import product catalogue from CSV — replaces the full catalogue |
 
 **Order statuses:** `CREATED` → `PAID` → `INVENTORY_APPROVED` (success) / `PAYMENT_FAILED` / `INVENTORY_REJECTED` → `CANCELLED`
 
@@ -373,10 +381,12 @@ The Angular 21 SPA is served by nginx on port 4200 in Docker. It communicates ex
 
 **New Order** — product catalogue of vinyl albums with cover art, quantity selector, running cart total, and idempotent checkout (client-generated `Idempotency-Key` header).
 
-**Admin Panel** — three control cards, all require `admin` role:
-- **Acceptance modes** — separate toggles for the inventory and payment consumers; disable either to force all requests to be rejected regardless of inventory state
-- **Saga step delay** — per-service delay dropdowns (0 s / 2 s / 4 s / 6 s / 8 s); slows the payment or inventory consumer so each status transition is visible in the live saga timeline during a demo
-- **Failure simulation** — crash mode toggles for the payment and inventory consumers; when enabled the consumer throws on every message, triggering 5 retries and moving the message to the DLQ; the saga times out after 30 s and cancels the order; visible in the Grafana ERROR stream and DLQ event count panel
+**Admin Panel** — four control cards, all require `admin` role:
+
+- **Product Catalogue** — CSV file upload that triggers a Spring Batch import job; replaces the full catalogue on each run; shows imported and skipped record counts
+- **Acceptance modes** — separate toggles for inventory and payment consumers; force requests to be rejected regardless of inventory state
+- **Saga step delay** — per-service delay controls (0–8 s); slows payment or inventory processing so saga transitions are visible in the live timeline during demonstrations
+- **Failure simulation** — crash mode for payment and inventory consumers; forces retries, DLQ routing, and eventual saga timeout; visible in Grafana logs and metrics
 
 **UI library** — PrimeNG.
 
@@ -403,12 +413,13 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Quarkus 3.33, Java 25 |
+| Runtime | Quarkus 3.33, Spring Boot 4.0.6, Java 25 |
 | Frontend | Angular 21, PrimeNG 21, nginx |
 | Messaging | Apache Kafka 4.1.1, SmallRye Reactive Messaging |
 | Serialization | Apache Avro 1.12.1, Apicurio Schema Registry 3.1.7 |
-| Database | PostgreSQL 18, Hibernate ORM Panache, Flyway |
-| Resilience | MicroProfile Fault Tolerance (retry, DLQ) |
+| Database | PostgreSQL 18, Hibernate ORM Panache, Spring Data JPA, Flyway |
+| Batch | Spring Batch 6 |
+| Resilience | MicroProfile Fault Tolerance |
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
@@ -462,7 +473,7 @@ graph LR
     F --> D
 ```
 
-Images pushed: `tbzowka/{order-service,payment-service,inventory-service,gateway,frontend}:latest`
+Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product-service,gateway,frontend}:latest`
 
 ---
 
@@ -511,3 +522,4 @@ npx playwright show-report     # open HTML report after a run
 - [x] **Angular Frontend** — order list, order detail with live saga timeline, checkout with vinyl catalogue, admin panel; PrimeNG UI, nginx in Docker
 - [x] **Observability** — Micrometer metrics, Prometheus, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically; Correlation ID distributed tracing via dedicated Loki dashboard
 - [x] **Integration Tests** — `@QuarkusTest` + Testcontainers; full saga flows, HTTP contract validation, outbox publisher; Playwright E2E tests for happy path, failure path, and auth
+- [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service (own PostgreSQL schema)

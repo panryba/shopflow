@@ -33,6 +33,8 @@ public class OrderMapper {
                     itemEntity.setProductId(item.productId());
                     itemEntity.setQuantity(item.quantity());
                     itemEntity.setPrice(item.price().amount());
+                    itemEntity.setProductName(item.productName());
+                    itemEntity.setImageUrl(item.imageUrl());
                     itemEntity.setOrder(entity);
                     return itemEntity;
                 })
@@ -50,7 +52,9 @@ public class OrderMapper {
                         new OrderId(entity.getId()),
                         e.getProductId(),
                         e.getQuantity(),
-                        new Money(e.getPrice())
+                        new Money(e.getPrice()),
+                        e.getProductName(),
+                        e.getImageUrl()
                 ))
                 .toList();
 

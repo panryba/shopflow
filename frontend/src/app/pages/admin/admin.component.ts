@@ -2,14 +2,17 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToggleButtonModule } from 'primeng/togglebutton';
 import { Select } from 'primeng/select';
+import { ButtonModule } from 'primeng/button';
 import { MessageService } from 'primeng/api';
 import { InventoryService } from '../../core/services/inventory.service';
 import { PaymentService } from '../../core/services/payment.service';
+import { ProductService } from '../../core/services/product.service';
+import { ImportResult } from '../../core/models/product.model';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [FormsModule, ToggleButtonModule, Select],
+  imports: [FormsModule, ToggleButtonModule, Select, ButtonModule],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
 })
@@ -17,6 +20,7 @@ export class AdminComponent implements OnInit {
   private inventoryService = inject(InventoryService);
   private paymentService = inject(PaymentService);
   private messageService = inject(MessageService);
+  private productService = inject(ProductService);
 
   inventoryAccept = signal(true);
   paymentAccept = signal(true);
@@ -24,6 +28,10 @@ export class AdminComponent implements OnInit {
   inventoryDelay = signal(0);
   paymentCrash = signal(false);
   inventoryCrash = signal(false);
+
+  selectedFile = signal<File | null>(null);
+  importing = signal(false);
+  importResult = signal<ImportResult | null>(null);
 
   readonly delayOptions = [
     { label: '0s', value: 0 },
@@ -57,6 +65,33 @@ export class AdminComponent implements OnInit {
     this.inventoryService.getCrash().subscribe({
       next: v => this.inventoryCrash.set(v),
       error: () => {}
+    });
+  }
+
+  onFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.selectedFile.set(input.files?.[0] ?? null);
+    this.importResult.set(null);
+  }
+
+  importCatalogue(): void {
+    const file = this.selectedFile();
+    if (!file || this.importing()) return;
+    this.importing.set(true);
+    this.importResult.set(null);
+    this.productService.importProducts(file).subscribe({
+      next: result => {
+        this.importing.set(false);
+        this.importResult.set(result);
+        this.messageService.add({
+          severity: result.skipped > 0 ? 'warn' : 'success',
+          summary: `Imported ${result.imported} products` + (result.skipped > 0 ? `, ${result.skipped} skipped` : '')
+        });
+      },
+      error: () => {
+        this.importing.set(false);
+        this.messageService.add({ severity: 'error', summary: 'Import failed' });
+      }
     });
   }
 

@@ -21,7 +21,9 @@ public class OrderPresentationMapper {
                 .map(i -> new OrderItemResponse(
                         i.productId(),
                         i.quantity(),
-                        i.price().amount()
+                        i.price().amount(),
+                        i.productName(),
+                        i.imageUrl()
                 ))
                 .toList();
 

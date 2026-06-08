@@ -4,23 +4,41 @@
   <div class="shop-layout">
 
     <div class="catalog">
-      <p-carousel [value]="products()" [numVisible]="3" [numScroll]="1" [circular]="true"
-                  [responsiveOptions]="responsiveOptions">
-        <ng-template let-product pTemplate="item">
-          <div class="product-card">
-            <div class="product-img-wrap">
-              <img [ngSrc]="product.imageUrl" [alt]="product.artist + ' – ' + product.title" fill sizes="(max-width: 768px) 90vw, 30vw" />
+      @if (products() === null) {
+        <div class="skeleton-grid">
+          @for (_ of [1, 2, 3]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-img"></div>
+              <div class="skeleton-line skeleton-line--wide"></div>
+              <div class="skeleton-line skeleton-line--narrow"></div>
+              <div class="skeleton-line skeleton-line--btn"></div>
             </div>
-            <div class="product-info">
-              <p class="artist">{{ product.artist }}</p>
-              <p class="album">{{ product.title }}</p>
-              <p class="price">{{ product.price | number:'1.2-2' }} USD</p>
+          }
+        </div>
+      } @else if (products()!.length === 0) {
+        <div class="spinner-wrap">
+          <i class="pi pi-inbox" style="font-size: 2.5rem; color: #94a3b8"></i>
+          <p>No products yet — import a catalogue from the <a routerLink="/admin">Admin</a> page.</p>
+        </div>
+      } @else {
+        <p-carousel [value]="products()!" [numVisible]="3" [numScroll]="1" [circular]="true"
+                    [responsiveOptions]="responsiveOptions">
+          <ng-template let-product pTemplate="item">
+            <div class="product-card">
+              <div class="product-img-wrap">
+                <img [ngSrc]="product.imageUrl" [alt]="product.artist + ' – ' + product.title" fill sizes="(max-width: 768px) 90vw, 30vw" />
+              </div>
+              <div class="product-info">
+                <p class="artist">{{ product.artist }}</p>
+                <p class="album">{{ product.title }}</p>
+                <p class="price">{{ product.price | number:'1.2-2' }} USD</p>
+              </div>
+              <p-button label="Add to Cart" icon="pi pi-shopping-cart" styleClass="w-full btn-add-cart"
+                        (click)="cartService.add(product)" />
             </div>
-            <p-button label="Add to Cart" icon="pi pi-shopping-cart" styleClass="w-full btn-add-cart"
-                      (click)="cartService.add(product)" />
-          </div>
-        </ng-template>
-      </p-carousel>
+          </ng-template>
+        </p-carousel>
+      }
     </div>
 
     <div class="cart-panel">

@@ -1,7 +1,7 @@
 import { Component, inject, effect, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DecimalPipe, NgOptimizedImage } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { CarouselModule } from 'primeng/carousel';
@@ -13,7 +13,7 @@ import { ProductService } from '../../core/services/product.service';
 @Component({
   selector: 'app-order-create',
   standalone: true,
-  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage],
+  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage, RouterLink],
   templateUrl: './order-create.component.html',
   styleUrl: './order-create.component.scss'
 })
@@ -25,7 +25,7 @@ export class OrderCreateComponent {
 
   protected cartService = inject(CartService);
 
-  readonly products = toSignal(this.productService.getAll(), { initialValue: [] });
+  readonly products = toSignal(this.productService.getAll(), { initialValue: null });
   readonly submitting = signal(false);
 
   constructor() {

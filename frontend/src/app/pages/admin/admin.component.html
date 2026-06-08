@@ -31,7 +31,7 @@
           <p class="guide-text">Example row:</p>
           <code class="guide-code">Pink Floyd,Animals,36.99,/assets/covers/pink-floyd-animals.jpg</code>
           <p class="guide-warn">
-            <i class="pi pi-exclamation-triangle"></i>
+            <i class="pi pi-info-circle"></i>
             <code>imageUrl</code> must reference a file served under <code>/assets/covers/</code>.
             External URLs are not supported. Use the sample files above as reference.
           </p>
@@ -42,7 +42,7 @@
     <div class="import-row">
       <input #fileInput type="file" accept=".csv" class="hidden-input" (change)="onFileChange($event)" />
       <p-button label="Choose CSV" icon="pi pi-upload" styleClass="csv-btn" (click)="fileInput.click()" />
-      <p-button label="Import" icon="pi pi-check"
+      <p-button label="Import" icon="pi pi-check" styleClass="btn-import"
                 [loading]="importing()" [disabled]="!selectedFile() || importing()"
                 (click)="importCatalogue()" />
     </div>

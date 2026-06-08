@@ -92,6 +92,20 @@
   display: none;
 }
 
+::ng-deep .btn-import,
+::ng-deep .btn-import.p-button {
+  background: #5a6270 !important;
+  border-color: #5a6270 !important;
+  color: #ffffff !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+::ng-deep .btn-import:hover,
+::ng-deep .btn-import.p-button:hover {
+  background: #484f5c !important;
+  border-color: #484f5c !important;
+}
+
 ::ng-deep .csv-btn.p-button {
   background: #e2e8f0;
   border-color: #cbd5e1;
@@ -193,9 +207,9 @@
 
 .guide-warn {
   font-size: 0.78rem;
-  color: #92400e;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  color: #374151;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   margin: 0;
@@ -204,12 +218,13 @@
   i {
     font-size: 0.75rem;
     margin-right: 0.3rem;
+    color: #3b82f6;
   }
 
   code {
     font-family: monospace;
     font-size: 0.75rem;
-    background: #fef3c7;
+    background: #e2e8f0;
     padding: 0.05rem 0.25rem;
     border-radius: 3px;
   }

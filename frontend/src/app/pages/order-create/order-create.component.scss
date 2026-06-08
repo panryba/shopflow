@@ -93,7 +93,7 @@
   .product-info {
     .artist {
       font-size: 0.8rem;
-      color: var(--p-text-muted-color);
+      color: #94a3b8;
       margin: 0 0 0.2rem;
     }
     .album {
@@ -114,7 +114,7 @@
 .empty-cart {
   text-align: center;
   padding: 2rem 0;
-  color: var(--p-text-muted-color);
+  color: #94a3b8;
 
   i {
     font-size: 2.5rem;
@@ -155,7 +155,7 @@
 
     .item-price {
       font-size: 0.75rem;
-      color: var(--p-text-muted-color);
+      color: #94a3b8;
       margin: 0;
     }
   }
@@ -194,5 +194,53 @@
   gap: 1rem;
   margin-top: 4rem;
 
-  p { color: var(--p-text-muted-color); }
+  p {
+    color: #94a3b8;
+    margin: 0;
+
+    a {
+      color: #3b82f6;
+      text-decoration: none;
+      &:hover { text-decoration: underline; }
+    }
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-grid {
+  display: flex;
+  gap: 0;
+}
+
+.skeleton-card {
+  flex: 0 0 calc(100% / 3);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skeleton-img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.skeleton-line {
+  height: 0.75rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+
+  &--wide   { width: 80%; }
+  &--narrow { width: 50%; }
+  &--btn    { width: 100%; height: 2.25rem; margin-top: 0.25rem; }
 }

@@ -97,8 +97,8 @@
   background: #5a6270 !important;
   border-color: #5a6270 !important;
   color: #ffffff !important;
-  padding-top: 0.3rem !important;
-  padding-bottom: 0.3rem !important;
+  font-size: 0.8rem !important;
+  padding: 0.3rem 0.75rem !important;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -113,8 +113,7 @@
   border-color: #cbd5e1;
   color: #374151 !important;
   font-size: 0.8rem;
-  padding-top: 0.3rem;
-  padding-bottom: 0.3rem;
+  padding: 0.3rem 0.75rem;
 
   &:hover {
     background: #cbd5e1;

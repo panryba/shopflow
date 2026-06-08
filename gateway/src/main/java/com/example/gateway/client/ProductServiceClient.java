@@ -18,6 +18,8 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 
+import java.io.File;
+
 @RegisterRestClient(configKey = "product-service")
 @RegisterProvider(OutgoingCorrelationIdFilter.class)
 @RegisterProvider(OutgoingJwtFilter.class)
@@ -39,6 +41,6 @@ public interface ProductServiceClient {
     class ProductImportForm {
         @RestForm("file")
         @PartType(MediaType.APPLICATION_OCTET_STREAM)
-        public byte[] file;
+        public File file;
     }
 }

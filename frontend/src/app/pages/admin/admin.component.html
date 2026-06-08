@@ -41,14 +41,14 @@
 
     <div class="import-row">
       <input #fileInput type="file" accept=".csv" class="hidden-input" (change)="onFileChange($event)" />
-      <p-button label="Choose CSV" icon="pi pi-upload" severity="secondary" (click)="fileInput.click()" />
-      @if (selectedFile()) {
-        <span class="file-name">{{ selectedFile()!.name }}</span>
-      }
+      <p-button label="Choose CSV" icon="pi pi-upload" styleClass="csv-btn" (click)="fileInput.click()" />
       <p-button label="Import" icon="pi pi-check"
                 [loading]="importing()" [disabled]="!selectedFile() || importing()"
                 (click)="importCatalogue()" />
     </div>
+    @if (selectedFile()) {
+      <p class="file-name">{{ selectedFile()!.name }}</p>
+    }
 
     @if (importResult()) {
       <div class="import-status" [class.import-status--warn]="importResult()!.skipped > 0">

@@ -23,15 +23,17 @@ public class ProductSkipListener implements SkipListener<ProductCsv, Product> {
         if (t instanceof FlatFileParseException e) {
             skippedRecords.add(new SkippedRecord(
                     "Line " + e.getLineNumber(),
-                    "Malformed CSV: " + e.getInput()
+                    "Wrong number of columns (expected 4): " + e.getInput()
             ));
         }
     }
 
     @Override
     public void onSkipInProcess(@NonNull ProductCsv item, @NonNull Throwable t) {
+        String artist = item.getArtist() != null && !item.getArtist().isBlank() ? item.getArtist() : "?";
+        String title  = item.getTitle()  != null && !item.getTitle().isBlank()  ? item.getTitle()  : "?";
         skippedRecords.add(new SkippedRecord(
-                item.getArtist() + " – " + item.getTitle(),
+                artist + " – " + title,
                 t.getMessage()
         ));
     }

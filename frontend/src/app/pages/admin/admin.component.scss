@@ -92,6 +92,22 @@
   display: none;
 }
 
+::ng-deep .csv-btn.p-button {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #374151;
+  font-size: 0.8rem;
+
+  &:hover {
+    background: #cbd5e1;
+    border-color: #b8c4d6;
+  }
+
+  .p-button-icon {
+    color: #374151;
+  }
+}
+
 .sample-row {
   display: flex;
   gap: 0.5rem;
@@ -176,9 +192,6 @@
 }
 
 .guide-warn {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
   font-size: 0.78rem;
   color: #92400e;
   background: #fffbeb;
@@ -186,11 +199,11 @@
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   margin: 0;
+  line-height: 1.5;
 
   i {
     font-size: 0.75rem;
-    margin-top: 0.1rem;
-    flex-shrink: 0;
+    margin-right: 0.3rem;
   }
 
   code {
@@ -210,9 +223,9 @@
 }
 
 .file-name {
-  font-size: 0.875rem;
-  color: #374151;
-  flex: 1;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

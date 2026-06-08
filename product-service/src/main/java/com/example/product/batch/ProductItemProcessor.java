@@ -14,14 +14,18 @@ public class ProductItemProcessor implements ItemProcessor<ProductCsv, Product> 
 
     @Override
     public Product process(ProductCsv item) {
-        if (item.getArtist() == null || item.getArtist().isBlank()) return null;
-        if (item.getTitle() == null || item.getTitle().isBlank()) return null;
+        if (item.getArtist() == null || item.getArtist().isBlank())
+            throw new IllegalArgumentException("Artist is required");
+        if (item.getTitle() == null || item.getTitle().isBlank())
+            throw new IllegalArgumentException("Title is required");
 
+        if (item.getPrice() == null || item.getPrice().isBlank())
+            throw new IllegalArgumentException("Price is required");
         BigDecimal price;
         try {
             price = new BigDecimal(item.getPrice().trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid price: " + item.getPrice());
+            throw new IllegalArgumentException("Invalid price: \"" + item.getPrice().trim() + "\"");
         }
 
         return Product.builder()

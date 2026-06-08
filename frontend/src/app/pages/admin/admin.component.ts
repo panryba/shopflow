@@ -7,6 +7,7 @@ import { MessageService } from 'primeng/api';
 import { InventoryService } from '../../core/services/inventory.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { ProductService } from '../../core/services/product.service';
+import { CartService } from '../../core/services/cart.service';
 import { ImportResult } from '../../core/models/product.model';
 
 @Component({
@@ -21,6 +22,7 @@ export class AdminComponent implements OnInit {
   private paymentService = inject(PaymentService);
   private messageService = inject(MessageService);
   private productService = inject(ProductService);
+  private cartService = inject(CartService);
 
   inventoryAccept = signal(true);
   paymentAccept = signal(true);
@@ -90,10 +92,12 @@ export class AdminComponent implements OnInit {
       next: result => {
         this.importing.set(false);
         this.importResult.set(result);
+        this.cartService.clear();
       },
-      error: () => {
+      error: (err) => {
         this.importing.set(false);
-        this.importError.set('Import failed — server error. Check logs for details.');
+        const message = err?.error?.error;
+        this.importError.set(message ?? 'Import failed — server error. Check logs for details.');
       }
     });
   }

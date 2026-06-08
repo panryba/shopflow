@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -25,12 +26,32 @@ public class ProductImportService {
     private final Job importProductsJob;
     private final ProductSkipListener skipListener;
 
+    private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";
+
+    private void validateFileType(String filename) {
+        if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
+            throw new IllegalArgumentException("Invalid file type — only .csv files are accepted.");
+        }
+    }
+
+    private void validateHeader(Path file) throws Exception {
+        try (Stream<String> lines = Files.lines(file)) {
+            String header = lines.findFirst().orElse("");
+            if (!header.trim().equals(EXPECTED_HEADER)) {
+                throw new IllegalArgumentException(
+                        "Invalid CSV header. Expected: " + EXPECTED_HEADER + ", got: " + header.trim());
+            }
+        }
+    }
+
     public ImportResult importCsv(MultipartFile file) {
         Path tempFile = null;
         try {
             tempFile = Files.createTempFile("product-import-", ".csv");
             file.transferTo(tempFile);
 
+            validateFileType(file.getOriginalFilename());
+            validateHeader(tempFile);
             skipListener.reset();
 
             JobParameters params = new JobParametersBuilder()
@@ -50,6 +71,9 @@ public class ProductImportService {
                     .skippedRecords(skipListener.getSkippedRecords())
                     .build();
 
+        } catch (IllegalArgumentException e) {
+            log.warn("Product import rejected: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Product import failed", e);
             throw new RuntimeException("Import failed: " + e.getMessage(), e);

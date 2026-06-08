@@ -6,8 +6,13 @@ export interface Product {
   imageUrl: string;
 }
 
+export interface SkippedRecord {
+  identifier: string;
+  reason: string;
+}
+
 export interface ImportResult {
   imported: number;
   skipped: number;
-  skippedRecords: string[];
+  skippedRecords: SkippedRecord[];
 }

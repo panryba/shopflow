@@ -3,7 +3,42 @@
 
   <div class="card">
     <p class="card-label"><i class="pi pi-database"></i> Product Catalogue</p>
-    <p class="card-hint">Import vinyl records from a CSV file. Replaces the entire catalogue on each import.</p>
+
+    <div>
+      <p class="card-hint">Sample files ready to import:</p>
+      <div class="sample-row">
+        <a href="/assets/sample-data/classic-rock.csv" download class="sample-link">
+          <i class="pi pi-download"></i> Classic Rock
+        </a>
+        <a href="/assets/sample-data/80s-rock.csv" download class="sample-link">
+          <i class="pi pi-download"></i> 80s Rock
+        </a>
+        <a href="/assets/sample-data/heavy-metal.csv" download class="sample-link">
+          <i class="pi pi-download"></i> Heavy Metal
+        </a>
+      </div>
+    </div>
+
+    <div class="format-guide">
+      <button class="guide-toggle" (click)="formatGuideOpen.set(!formatGuideOpen())">
+        <i class="pi" [class.pi-chevron-right]="!formatGuideOpen()" [class.pi-chevron-down]="formatGuideOpen()"></i>
+        Format guide
+      </button>
+      @if (formatGuideOpen()) {
+        <div class="guide-content">
+          <p class="guide-text">Required columns:</p>
+          <code class="guide-code">artist,title,price,imageUrl</code>
+          <p class="guide-text">Example row:</p>
+          <code class="guide-code">Pink Floyd,Animals,36.99,/assets/covers/pink-floyd-animals.jpg</code>
+          <p class="guide-warn">
+            <i class="pi pi-exclamation-triangle"></i>
+            <code>imageUrl</code> must reference a file served under <code>/assets/covers/</code>.
+            External URLs are not supported. Use the sample files above as reference.
+          </p>
+        </div>
+      }
+    </div>
+
     <div class="import-row">
       <input #fileInput type="file" accept=".csv" class="hidden-input" (change)="onFileChange($event)" />
       <p-button label="Choose CSV" icon="pi pi-upload" severity="secondary" (click)="fileInput.click()" />
@@ -14,12 +49,37 @@
                 [loading]="importing()" [disabled]="!selectedFile() || importing()"
                 (click)="importCatalogue()" />
     </div>
+
     @if (importResult()) {
-      <div class="import-result" [class.import-result--warn]="importResult()!.skipped > 0">
+      <div class="import-status" [class.import-status--warn]="importResult()!.skipped > 0">
+        <i class="pi pi-check-circle"></i>
+        <span>Import complete —</span>
         <span>Imported: <strong>{{ importResult()!.imported }}</strong></span>
         @if (importResult()!.skipped > 0) {
           <span>Skipped: <strong>{{ importResult()!.skipped }}</strong></span>
         }
+      </div>
+      @if (importResult()!.skipped > 0) {
+        <div class="skipped-section">
+          <button class="guide-toggle" (click)="showSkipped.set(!showSkipped())">
+            <i class="pi" [class.pi-chevron-right]="!showSkipped()" [class.pi-chevron-down]="showSkipped()"></i>
+            Skipped rows
+          </button>
+          @if (showSkipped()) {
+            <ul class="skipped-list">
+              @for (r of importResult()!.skippedRecords; track r.identifier) {
+                <li><strong>{{ r.identifier }}</strong>: {{ r.reason }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    }
+
+    @if (importError()) {
+      <div class="import-error">
+        <i class="pi pi-times-circle"></i>
+        <span>{{ importError() }}</span>
       </div>
     }
   </div>

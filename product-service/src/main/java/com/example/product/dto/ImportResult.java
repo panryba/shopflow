@@ -10,5 +10,5 @@ import java.util.List;
 public class ImportResult {
     private final int imported;
     private final int skipped;
-    private final List<String> skippedRecords;
+    private final List<SkippedRecord> skippedRecords;
 }

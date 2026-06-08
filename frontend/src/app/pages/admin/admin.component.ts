@@ -32,6 +32,9 @@ export class AdminComponent implements OnInit {
   selectedFile = signal<File | null>(null);
   importing = signal(false);
   importResult = signal<ImportResult | null>(null);
+  importError = signal<string | null>(null);
+  formatGuideOpen = signal(false);
+  showSkipped = signal(false);
 
   readonly delayOptions = [
     { label: '0s', value: 0 },
@@ -72,6 +75,8 @@ export class AdminComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     this.selectedFile.set(input.files?.[0] ?? null);
     this.importResult.set(null);
+    this.importError.set(null);
+    this.showSkipped.set(false);
   }
 
   importCatalogue(): void {
@@ -79,18 +84,16 @@ export class AdminComponent implements OnInit {
     if (!file || this.importing()) return;
     this.importing.set(true);
     this.importResult.set(null);
+    this.importError.set(null);
+    this.showSkipped.set(false);
     this.productService.importProducts(file).subscribe({
       next: result => {
         this.importing.set(false);
         this.importResult.set(result);
-        this.messageService.add({
-          severity: result.skipped > 0 ? 'warn' : 'success',
-          summary: `Imported ${result.imported} products` + (result.skipped > 0 ? `, ${result.skipped} skipped` : '')
-        });
       },
       error: () => {
         this.importing.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Import failed' });
+        this.importError.set('Import failed — server error. Check logs for details.');
       }
     });
   }

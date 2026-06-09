@@ -23,6 +23,7 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/actuator/prometheus", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products").authenticated()
                         .requestMatchers(HttpMethod.POST, "/products/import").hasRole("admin")
                         .anyRequest().denyAll()

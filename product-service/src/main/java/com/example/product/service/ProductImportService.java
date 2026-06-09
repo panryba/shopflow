@@ -2,7 +2,8 @@ package com.example.product.service;
 
 import com.example.product.batch.ProductSkipListener;
 import com.example.product.dto.ImportResult;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
@@ -18,13 +19,27 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ProductImportService {
 
     private final JobOperator jobOperator;
     private final Job importProductsJob;
     private final ProductSkipListener skipListener;
+    private final Counter importsTotal;
+    private final Counter importFailuresTotal;
+    private final Counter importedTotal;
+    private final Counter skippedTotal;
+
+    public ProductImportService(JobOperator jobOperator, Job importProductsJob,
+                                ProductSkipListener skipListener, MeterRegistry registry) {
+        this.jobOperator = jobOperator;
+        this.importProductsJob = importProductsJob;
+        this.skipListener = skipListener;
+        this.importsTotal       = registry.counter("products.imports.total");
+        this.importFailuresTotal = registry.counter("products.import.failures.total");
+        this.importedTotal      = registry.counter("products.imported.total");
+        this.skippedTotal       = registry.counter("products.skipped.total");
+    }
 
     private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";
 
@@ -65,17 +80,23 @@ public class ProductImportService {
                     .mapToLong(StepExecution::getWriteCount)
                     .sum();
 
-            return ImportResult.builder()
+            ImportResult result = ImportResult.builder()
                     .imported((int) written)
                     .skipped(skipListener.getSkippedRecords().size())
                     .skippedRecords(skipListener.getSkippedRecords())
                     .build();
+
+            importsTotal.increment();
+            importedTotal.increment(result.getImported());
+            skippedTotal.increment(result.getSkipped());
+            return result;
 
         } catch (IllegalArgumentException e) {
             log.warn("Product import rejected: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Product import failed", e);
+            importFailuresTotal.increment();
             throw new RuntimeException("Import failed: " + e.getMessage(), e);
         } finally {
             if (tempFile != null) {

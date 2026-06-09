@@ -23,6 +23,11 @@ scrape_configs:
     static_configs:
       - targets: ['gateway:8090']
 
+  - job_name: product-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['product-service:8084']
+
   - job_name: kafka-exporter
     static_configs:
       - targets: ['kafka-exporter:9308']

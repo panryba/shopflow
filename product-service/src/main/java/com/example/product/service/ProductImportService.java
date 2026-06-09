@@ -62,6 +62,7 @@ public class ProductImportService {
 
     public ImportResult importCsv(MultipartFile file) {
         Path tempFile = null;
+        boolean failureCounted = false;
         try {
             tempFile = Files.createTempFile("product-import-", ".csv");
             file.transferTo(tempFile);
@@ -80,6 +81,7 @@ public class ProductImportService {
 
             if (execution.getStatus() == BatchStatus.FAILED) {
                 importFailuresTotal.increment();
+                failureCounted = true;
                 throw new RuntimeException("Import job failed: " + execution.getExitStatus().getExitDescription());
             }
 
@@ -102,7 +104,9 @@ public class ProductImportService {
             throw e;
         } catch (Exception e) {
             log.error("Product import failed", e);
-            importFailuresTotal.increment();
+            if (!failureCounted) {
+                importFailuresTotal.increment();
+            }
             throw new RuntimeException("Import failed: " + e.getMessage(), e);
         } finally {
             if (tempFile != null) {

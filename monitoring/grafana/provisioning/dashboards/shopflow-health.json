@@ -15,28 +15,28 @@
       "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "unit": "short" } },
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "products_imports_total{job=\"product-service\"}", "legendFormat": "" }]
+      "targets": [{ "expr": "products_imports_total{job=\"product-service\"}", "legendFormat": "" }]
     },
     {
       "id": 202, "type": "stat", "title": "Import Failures",
       "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" }, "unit": "short" } },
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "products_import_failures_total{job=\"product-service\"}", "legendFormat": "" }]
+      "targets": [{ "expr": "products_import_failures_total{job=\"product-service\"}", "legendFormat": "" }]
     },
     {
       "id": 203, "type": "stat", "title": "Records Imported (all runs)",
       "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" }, "unit": "short" } },
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "products_imported_total{job=\"product-service\"}", "legendFormat": "" }]
+      "targets": [{ "expr": "products_imported_total{job=\"product-service\"}", "legendFormat": "" }]
     },
     {
       "id": 204, "type": "stat", "title": "Records Skipped (all runs)",
       "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" }, "unit": "short" } },
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "products_skipped_total{job=\"product-service\"}", "legendFormat": "" }]
+      "targets": [{ "expr": "products_skipped_total{job=\"product-service\"}", "legendFormat": "" }]
     },
 
     { "id": 100, "type": "row", "title": "Infrastructure Health", "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "collapsed": false },

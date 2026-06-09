@@ -5,6 +5,7 @@ import com.example.product.dto.ImportResult;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.parameters.JobParameters;
@@ -75,6 +76,12 @@ public class ProductImportService {
                     .toJobParameters();
 
             JobExecution execution = jobOperator.start(importProductsJob, params);
+            importsTotal.increment();
+
+            if (execution.getStatus() == BatchStatus.FAILED) {
+                importFailuresTotal.increment();
+                throw new RuntimeException("Import job failed: " + execution.getExitStatus().getExitDescription());
+            }
 
             long written = execution.getStepExecutions().stream()
                     .mapToLong(StepExecution::getWriteCount)
@@ -86,7 +93,6 @@ public class ProductImportService {
                     .skippedRecords(skipListener.getSkippedRecords())
                     .build();
 
-            importsTotal.increment();
             importedTotal.increment(result.getImported());
             skippedTotal.increment(result.getSkipped());
             return result;

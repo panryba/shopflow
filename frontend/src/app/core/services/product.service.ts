@@ -17,11 +17,11 @@ export class ProductService {
     return this.http.post<ImportResult>('/api/products/import', formData);
   }
 
-  getCrash(): Observable<boolean> {
-    return this.http.get<boolean>('/api/products/crash');
+  getFailure(): Observable<boolean> {
+    return this.http.get<boolean>('/api/products/failure');
   }
 
-  setCrash(enabled: boolean): Observable<void> {
-    return this.http.put<void>(`/api/products/crash?enabled=${enabled}`, null);
+  setFailure(enabled: boolean): Observable<void> {
+    return this.http.put<void>(`/api/products/failure?enabled=${enabled}`, null);
   }
 }

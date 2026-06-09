@@ -38,14 +38,14 @@ public class ProductResource {
         return importService.importCsv(file);
     }
 
-    @GetMapping("/crash")
-    public boolean getCrash() {
-        return importService.isCrash();
+    @GetMapping("/failure")
+    public boolean getFailure() {
+        return importService.isFailure();
     }
 
-    @PutMapping("/crash")
-    public ResponseEntity<Void> setCrash(@RequestParam boolean enabled) {
-        importService.setCrash(enabled);
+    @PutMapping("/failure")
+    public ResponseEntity<Void> setFailure(@RequestParam boolean enabled) {
+        importService.setFailure(enabled);
         return ResponseEntity.ok().build();
     }
 

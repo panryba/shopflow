@@ -42,10 +42,10 @@ public class ProductImportService {
         this.skippedTotal       = registry.counter("products.skipped");
     }
 
-    private volatile boolean crash = false;
+    private volatile boolean failure = false;
 
-    public boolean isCrash() { return crash; }
-    public void setCrash(boolean crash) { this.crash = crash; }
+    public boolean isFailure() { return failure; }
+    public void setFailure(boolean failure) { this.failure = failure; }
 
     private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";
 
@@ -69,7 +69,7 @@ public class ProductImportService {
         Path tempFile = null;
         boolean failureCounted = false;
         try {
-            if (crash) {
+            if (failure) {
                 Thread.sleep(3000);
                 throw new RuntimeException("Simulated import failure");
             }

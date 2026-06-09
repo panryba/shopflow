@@ -41,17 +41,17 @@ public interface ProductServiceClient {
     Response importProducts(@BeanParam ProductImportForm form);
 
     @GET
-    @Path("/crash")
+    @Path("/failure")
     @Produces(MediaType.APPLICATION_JSON)
     @Retry(delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response getCrash();
+    Response getFailure();
 
     @PUT
-    @Path("/crash")
+    @Path("/failure")
     @Retry(delay = 200, abortOn = WebApplicationException.class)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response setCrash(@QueryParam("enabled") boolean enabled);
+    Response setFailure(@QueryParam("enabled") boolean enabled);
 
     class ProductImportForm {
         @RestForm("file")

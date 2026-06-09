@@ -72,7 +72,7 @@ export class AdminComponent implements OnInit {
       next: v => this.inventoryCrash.set(v),
       error: () => {}
     });
-    this.productService.getCrash().subscribe({
+    this.productService.getFailure().subscribe({
       next: v => this.importCrash.set(v),
       error: () => {}
     });
@@ -180,7 +180,7 @@ export class AdminComponent implements OnInit {
   }
 
   setImportCrash(enabled: boolean) {
-    this.productService.setCrash(enabled).subscribe({
+    this.productService.setFailure(enabled).subscribe({
       next: () => {
         this.importCrash.set(enabled);
         this.messageService.add({

@@ -96,7 +96,7 @@
           [class]="importCrash() ? 'admin-toggle admin-toggle--reject' : 'admin-toggle admin-toggle--accept'"
           (onChange)="setImportCrash($event.checked)" />
         @if (importCrash()) {
-          <span class="crash-badge">FAIL</span>
+          <span class="crash-badge">FAILURE</span>
         }
       </div>
     </div>

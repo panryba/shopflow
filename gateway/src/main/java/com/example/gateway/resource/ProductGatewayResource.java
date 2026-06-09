@@ -56,17 +56,17 @@ public class ProductGatewayResource {
     }
 
     @GET
-    @Path("/crash")
+    @Path("/failure")
     @RolesAllowed("admin")
-    public Response getCrash() {
-        return forwarder.forward(productServiceClient.getCrash());
+    public Response getFailure() {
+        return forwarder.forward(productServiceClient.getFailure());
     }
 
     @PUT
-    @Path("/crash")
+    @Path("/failure")
     @RolesAllowed("admin")
-    public Response setCrash(@QueryParam("enabled") boolean enabled) {
-        return forwarder.forward(productServiceClient.setCrash(enabled));
+    public Response setFailure(@QueryParam("enabled") boolean enabled) {
+        return forwarder.forward(productServiceClient.setFailure(enabled));
     }
 
     public static class ProductUploadForm {

@@ -69,7 +69,10 @@ public class ProductImportService {
         Path tempFile = null;
         boolean failureCounted = false;
         try {
-            if (crash) throw new RuntimeException("Simulated import failure");
+            if (crash) {
+                Thread.sleep(3000);
+                throw new RuntimeException("Simulated import failure");
+            }
 
             tempFile = Files.createTempFile("product-import-", ".csv");
             file.transferTo(tempFile);

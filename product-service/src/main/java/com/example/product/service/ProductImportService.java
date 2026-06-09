@@ -35,10 +35,10 @@ public class ProductImportService {
         this.jobOperator = jobOperator;
         this.importProductsJob = importProductsJob;
         this.skipListener = skipListener;
-        this.importsTotal       = registry.counter("products.imports.total");
-        this.importFailuresTotal = registry.counter("products.import.failures.total");
-        this.importedTotal      = registry.counter("products.imported.total");
-        this.skippedTotal       = registry.counter("products.skipped.total");
+        this.importsTotal       = registry.counter("products.imports");
+        this.importFailuresTotal = registry.counter("products.import.failures");
+        this.importedTotal      = registry.counter("products.imported");
+        this.skippedTotal       = registry.counter("products.skipped");
     }
 
     private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";

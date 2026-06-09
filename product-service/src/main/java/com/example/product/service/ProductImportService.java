@@ -42,6 +42,11 @@ public class ProductImportService {
         this.skippedTotal       = registry.counter("products.skipped");
     }
 
+    private volatile boolean crash = false;
+
+    public boolean isCrash() { return crash; }
+    public void setCrash(boolean crash) { this.crash = crash; }
+
     private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";
 
     private void validateFileType(String filename) {
@@ -64,6 +69,8 @@ public class ProductImportService {
         Path tempFile = null;
         boolean failureCounted = false;
         try {
+            if (crash) throw new RuntimeException("Simulated import failure");
+
             tempFile = Files.createTempFile("product-import-", ".csv");
             file.transferTo(tempFile);
 

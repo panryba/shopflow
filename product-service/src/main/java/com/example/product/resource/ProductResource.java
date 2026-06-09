@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,17 @@ public class ProductResource {
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImportResult importProducts(@RequestParam("file") MultipartFile file) {
         return importService.importCsv(file);
+    }
+
+    @GetMapping("/crash")
+    public boolean getCrash() {
+        return importService.isCrash();
+    }
+
+    @PutMapping("/crash")
+    public ResponseEntity<Void> setCrash(@RequestParam boolean enabled) {
+        importService.setCrash(enabled);
+        return ResponseEntity.ok().build();
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

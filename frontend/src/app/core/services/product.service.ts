@@ -16,4 +16,12 @@ export class ProductService {
     formData.append('file', file);
     return this.http.post<ImportResult>('/api/products/import', formData);
   }
+
+  getCrash(): Observable<boolean> {
+    return this.http.get<boolean>('/api/products/crash');
+  }
+
+  setCrash(enabled: boolean): Observable<void> {
+    return this.http.put<void>(`/api/products/crash?enabled=${enabled}`, null);
+  }
 }

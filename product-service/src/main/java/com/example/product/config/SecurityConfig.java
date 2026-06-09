@@ -26,6 +26,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/prometheus", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products").authenticated()
                         .requestMatchers(HttpMethod.POST, "/products/import").hasRole("admin")
+                        .requestMatchers("/products/crash").hasRole("admin")
                         .anyRequest().denyAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

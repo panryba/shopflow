@@ -30,6 +30,7 @@ export class AdminComponent implements OnInit {
   inventoryDelay = signal(0);
   paymentCrash = signal(false);
   inventoryCrash = signal(false);
+  importCrash = signal(false);
 
   selectedFile = signal<File | null>(null);
   importing = signal(false);
@@ -69,6 +70,10 @@ export class AdminComponent implements OnInit {
     });
     this.inventoryService.getCrash().subscribe({
       next: v => this.inventoryCrash.set(v),
+      error: () => {}
+    });
+    this.productService.getCrash().subscribe({
+      next: v => this.importCrash.set(v),
       error: () => {}
     });
   }
@@ -171,6 +176,19 @@ export class AdminComponent implements OnInit {
         });
       },
       error: () => this.messageService.add({ severity: 'error', summary: 'Failed to update inventory crash mode' })
+    });
+  }
+
+  setImportCrash(enabled: boolean) {
+    this.productService.setCrash(enabled).subscribe({
+      next: () => {
+        this.importCrash.set(enabled);
+        this.messageService.add({
+          severity: enabled ? 'warn' : 'success',
+          summary: enabled ? 'Import will FAIL on every attempt' : 'Import failure simulation disabled'
+        });
+      },
+      error: () => this.messageService.add({ severity: 'error', summary: 'Failed to update import crash mode' })
     });
   }
 }

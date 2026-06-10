@@ -424,6 +424,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT, Spring Security |
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
+| Testing | JUnit 5, Mockito, Testcontainers, @QuarkusTest, @SpringBatchTest, Playwright |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
 
 ---
@@ -464,7 +465,7 @@ Every push to `master` triggers the pipeline. Pull requests run build and test o
 ```mermaid
 graph LR
     subgraph parallel["Parallel"]
-        B["build-backend<br/>─────────────<br/>Java 25 + Maven cache<br/>mvn package -DskipTests<br/>mvn test (all 3 services)<br/>save to cache"]
+        B["build-backend<br/>─────────────<br/>Java 25 + Maven cache<br/>mvn package -DskipTests<br/>mvn test (all services)<br/>save to cache"]
         F["build-frontend<br/>─────────────<br/>Node 24<br/>npm ci<br/>npm run build<br/>npm test<br/>(when tests exist)"]
     end
 
@@ -481,17 +482,24 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product
 ## Tests
 
 ```bash
-cd order-service   && ./mvnw test   # 46 tests
-cd payment-service && ./mvnw test   # 4 tests
-cd inventory-service && ./mvnw test # 3 tests
+cd order-service     && ./mvnw test   # 46 tests
+cd payment-service   && ./mvnw test   # 4 tests
+cd inventory-service && ./mvnw test   # 3 tests
+cd product-service   && ./mvnw test   # 20 tests
 ```
 
-**order-service** — `@QuarkusTest` integration tests with Testcontainers (Postgres, Kafka, Apicurio Schema Registry spun up automatically):
-- Full saga flows: happy path, inbox idempotency, saga timeout, inventory rejection + payment compensation
+**order-service** — `@QuarkusTest` integration tests with Testcontainers (PostgreSQL, Kafka, Apicurio Schema Registry):
+- Full saga flows: happy path, inbox idempotency, saga timeout, inventory rejection with payment compensation
 - HTTP contract: input validation (400), unknown order (404)
-- Outbox publisher: retry logic, batch size limit, routing per event type
+- Outbox publisher: retry logic, batch size limit, and event routing
 
-**payment-service / inventory-service** — Mockito unit tests on the event consumers: accepted, rejected, crash mode (nack).
+**product-service** — unit and integration tests:
+- CSV validation and parsing
+- Spring Batch processing, skip handling, and catalogue replacement
+- Import job execution with PostgreSQL Testcontainers
+- REST API endpoints and file upload scenarios
+
+**payment-service / inventory-service** — Mockito unit tests covering accepted, rejected, and crash-mode event processing.
 
 ### E2E Tests (Playwright)
 
@@ -522,5 +530,5 @@ npx playwright show-report     # open HTML report after a run
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
 - [x] **Angular Frontend** — order list, order detail with live saga timeline, checkout with vinyl catalogue, admin panel; PrimeNG UI, nginx in Docker
 - [x] **Observability** — Micrometer metrics, Prometheus, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically; Correlation ID distributed tracing via dedicated Loki dashboard
-- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers; full saga flows, HTTP contract validation, outbox publisher; Playwright E2E tests for happy path, failure path, and auth
+- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (order-service); `@SpringBatchTest` + Testcontainers PostgreSQL (product-service); full saga flows, HTTP contract validation, outbox publisher testing, CSV import workflows; Playwright E2E tests for happy path, failure path, and authentication
 - [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service (own PostgreSQL schema)

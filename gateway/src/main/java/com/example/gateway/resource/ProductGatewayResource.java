@@ -7,10 +7,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -53,20 +51,6 @@ public class ProductGatewayResource {
         } finally {
             Files.deleteIfExists(tempFile);
         }
-    }
-
-    @GET
-    @Path("/failure")
-    @RolesAllowed("admin")
-    public Response getFailure() {
-        return forwarder.forward(productServiceClient.getFailure());
-    }
-
-    @PUT
-    @Path("/failure")
-    @RolesAllowed("admin")
-    public Response setFailure(@QueryParam("enabled") boolean enabled) {
-        return forwarder.forward(productServiceClient.setFailure(enabled));
     }
 
     public static class ProductUploadForm {

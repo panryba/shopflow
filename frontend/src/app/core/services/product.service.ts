@@ -16,12 +16,4 @@ export class ProductService {
     formData.append('file', file);
     return this.http.post<ImportResult>('/api/products/import', formData);
   }
-
-  getFailure(): Observable<boolean> {
-    return this.http.get<boolean>('/api/products/failure');
-  }
-
-  setFailure(enabled: boolean): Observable<void> {
-    return this.http.put<void>(`/api/products/failure?enabled=${enabled}`, null);
-  }
 }

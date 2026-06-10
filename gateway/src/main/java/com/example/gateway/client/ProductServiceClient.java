@@ -6,10 +6,8 @@ import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -39,19 +37,6 @@ public interface ProductServiceClient {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
     Response importProducts(@BeanParam ProductImportForm form);
-
-    @GET
-    @Path("/failure")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Retry(delay = 200, abortOn = WebApplicationException.class)
-    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response getFailure();
-
-    @PUT
-    @Path("/failure")
-    @Retry(delay = 200, abortOn = WebApplicationException.class)
-    @CircuitBreaker(requestVolumeThreshold = 10, delay = 5000, successThreshold = 2)
-    Response setFailure(@QueryParam("enabled") boolean enabled);
 
     class ProductImportForm {
         @RestForm("file")

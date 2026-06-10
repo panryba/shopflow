@@ -83,23 +83,6 @@
         <span>{{ importError() }}</span>
       </div>
     }
-
-    <div class="crash-row">
-      <div class="crash-item">
-        <span class="crash-label">Failure simulation</span>
-        <p-toggleButton
-          [ngModel]="importCrash()"
-          onLabel="OFF"
-          offLabel="ON"
-          onIcon="pi pi-times"
-          offIcon="pi pi-check"
-          [class]="importCrash() ? 'admin-toggle admin-toggle--reject' : 'admin-toggle admin-toggle--accept'"
-          (onChange)="setImportCrash($event.checked)" />
-        @if (importCrash()) {
-          <span class="crash-badge">FAILURE</span>
-        }
-      </div>
-    </div>
   </div>
 
   <div class="card">

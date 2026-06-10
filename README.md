@@ -424,7 +424,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT, Spring Security |
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
-| Testing | JUnit 5, Mockito, Testcontainers, @QuarkusTest, @SpringBatchTest, Playwright |
+| Testing | JUnit 5, Mockito, Testcontainers, Quarkus Test Framework, Spring Batch Test, Playwright |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
 
 ---

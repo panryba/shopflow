@@ -14,6 +14,9 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
 import org.springframework.batch.infrastructure.item.file.FlatFileParseException;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper;
+import org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -73,12 +76,24 @@ public class ProductImportJob {
     @StepScope
     public FlatFileItemReader<ProductCsv> csvReader(
             @Value("#{jobParameters['filePath']}") String filePath) {
+        DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
+        tokenizer.setNames("artist", "title", "price", "imageUrl");
+
+        BeanWrapperFieldSetMapper<ProductCsv> fieldSetMapper = new BeanWrapperFieldSetMapper<>();
+        fieldSetMapper.setTargetType(ProductCsv.class);
+
+        DefaultLineMapper<ProductCsv> defaultMapper = new DefaultLineMapper<>();
+        defaultMapper.setLineTokenizer(tokenizer);
+        defaultMapper.setFieldSetMapper(fieldSetMapper);
+
         return new FlatFileItemReaderBuilder<ProductCsv>()
                 .name("productCsvReader")
                 .resource(new FileSystemResource(filePath))
-                .delimited()
-                .names("artist", "title", "price", "imageUrl")
-                .targetType(ProductCsv.class)
+                .lineMapper((line, lineNumber) -> {
+                    ProductCsv item = defaultMapper.mapLine(line, lineNumber);
+                    item.setLineNumber(lineNumber);
+                    return item;
+                })
                 .linesToSkip(1)
                 .build();
     }

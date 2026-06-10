@@ -8,4 +8,5 @@ public class ProductCsv {
     private String title;
     private String price;
     private String imageUrl;
+    private int lineNumber;
 }

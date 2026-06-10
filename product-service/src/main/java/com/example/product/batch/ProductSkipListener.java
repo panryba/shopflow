@@ -30,10 +30,8 @@ public class ProductSkipListener implements SkipListener<ProductCsv, Product> {
 
     @Override
     public void onSkipInProcess(@NonNull ProductCsv item, @NonNull Throwable t) {
-        String artist = item.getArtist() != null && !item.getArtist().isBlank() ? item.getArtist() : "?";
-        String title  = item.getTitle()  != null && !item.getTitle().isBlank()  ? item.getTitle()  : "?";
         skippedRecords.add(new SkippedRecord(
-                artist + " – " + title,
+                "Line " + item.getLineNumber(),
                 t.getMessage()
         ));
     }

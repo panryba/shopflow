@@ -129,6 +129,7 @@ graph TB
     PROM -->|scrape /q/metrics| OS
     PROM -->|scrape /q/metrics| PS
     PROM -->|scrape /q/metrics| IS
+    PROM -->|scrape /actuator/prometheus| PRODS
     GRAF -->|query| PROM
 ```
 
@@ -208,13 +209,13 @@ Because the saga is strictly sequential — each step is only published after th
 Each downstream service has its own consumer group. Kafka delivers every message to each group independently, so adding more instances of a service scales throughput without messages being skipped or duplicated.
 
 #### Correlation ID Tracing
-Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as an HTTP header on downstream calls and as a Kafka record header on outgoing events, and extracted by every consumer. All log lines include `corrId` and `orderId` via MDC, making it possible to trace a single order flow across synchronous HTTP requests and asynchronous saga events. The ID is echoed back in the response header so the client can use it for Grafana log lookups.
+Every request receives an `X-Correlation-ID` header (generated if absent). It is propagated as an HTTP header on downstream calls and as a Kafka record header on outgoing events, and extracted by every consumer. All services include `corrId` and `orderId` (when applicable) in log entries via MDC, making it possible to trace a single request flow across synchronous HTTP calls and asynchronous Kafka events. The ID is echoed back in the response header so it can be used for Grafana log lookups.
 
 ---
 
 ## JWT Authentication
 
-JWT validation is enforced at both the gateway and the order-service. The gateway validates via Keycloak OIDC, while the order-service validates independently against Keycloak's public key rather than blindly trusting forwarded credentials. Unauthenticated requests return `401 Unauthorized`; insufficient permissions return `403 Forbidden`.
+JWT validation is enforced at the gateway, the order-service, and the product-service. The gateway validates via Keycloak OIDC, while the order-service and product-service validate independently against Keycloak's public key rather than blindly trusting forwarded credentials. Unauthenticated requests return `401 Unauthorized`; insufficient permissions return `403 Forbidden`.
 
 The `Authorization` header is forwarded downstream so services can extract user identity from the token. Order endpoints require authentication, while administrative endpoints require the `admin` role.
 
@@ -420,7 +421,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Database | PostgreSQL 18, Hibernate ORM Panache, Spring Data JPA, Flyway |
 | Batch | Spring Batch 6 |
 | Resilience | MicroProfile Fault Tolerance |
-| Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT |
+| Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT, Spring Security |
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
@@ -429,18 +430,18 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 
 ## Observability
 
-All services expose Prometheus metrics via Micrometer on `/q/metrics`. Grafana Alloy ships Docker container logs to Loki. Grafana is provisioned automatically with Prometheus and Loki datasources plus four pre-built dashboards.
+All services expose Prometheus metrics via Micrometer. Quarkus services expose metrics on `/q/metrics`; the Spring Boot product-service exposes them on `/actuator/prometheus`. Grafana Alloy ships Docker container logs to Loki. Grafana is provisioned automatically with Prometheus and Loki datasources plus four pre-built dashboards.
 
 The observability stack focuses on business-level saga visibility in addition to infrastructure and JVM metrics.
 
-Custom metrics cover saga outcomes (created, completed, failed, compensated, timed out), saga duration by outcome, outbox pending lag, inbox duplicates blocked, and payment and inventory acceptance rates.
+Custom metrics cover saga outcomes (created, completed, failed, compensated, timed out), saga duration by outcome, outbox pending lag, inbox duplicates blocked, payment and inventory acceptance rates, plus Spring Batch import metrics from the product catalogue service.
 
 Four Grafana dashboards are provisioned automatically:
 
 - **Saga & Orders** — saga counter tiles, health time series (started vs completed vs failed), success rate %, average saga duration by outcome and order creation rate (increase over 5 min)
 - **Kafka & Messaging** — payment and inventory acceptance/rejection counters and rate trends
 - **Logs (Loki)** — correlation-ID-based distributed trace panel, live orchestrator and gateway log streams, ERROR stream per service, and per-service log volume
-- **System Health** — outbox pending lag, inbox duplicates, DLQ event counts, JVM heap, GC pause rate, HTTP request and error rates at the gateway
+- **System Health** — product catalogue import counters (total runs, failures, records imported, records skipped), outbox pending lag, inbox duplicates, DLQ event counts, JVM heap, GC pause rate, HTTP request and error rates at the gateway
 
 **Correlation ID tracing** — the Logs dashboard accepts a Correlation ID and instantly shows the full saga flow across all services in chronological order. The Order Detail page links directly to Grafana pre-filtered to that correlation ID.
 

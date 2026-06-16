@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ public class OrderEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @BatchSize(size = 32)
     private List<OrderItemEntity> items = new ArrayList<>();
 
 }

@@ -215,7 +215,7 @@ Every request receives an `X-Correlation-ID` header (generated if absent). It is
 
 ## JWT Authentication
 
-JWT validation is enforced at the gateway, the order-service, and the product-service. The gateway validates via Keycloak OIDC, while the order-service and product-service validate independently against Keycloak's public key rather than blindly trusting forwarded credentials. Unauthenticated requests return `401 Unauthorized`; insufficient permissions return `403 Forbidden`.
+JWT validation is enforced at the gateway and independently at every backend service against Keycloak's public key — no service blindly trusts forwarded credentials. Unauthenticated requests return `401 Unauthorized`; insufficient permissions return `403 Forbidden`.
 
 The `Authorization` header is forwarded downstream so services can extract user identity from the token. Order endpoints require authentication, while administrative endpoints require the `admin` role.
 

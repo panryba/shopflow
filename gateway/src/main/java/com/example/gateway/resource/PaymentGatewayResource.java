@@ -14,6 +14,7 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 @Path("/api/payment")
 @Produces(MediaType.TEXT_PLAIN)
+@RolesAllowed("admin")
 public class PaymentGatewayResource {
 
     @Inject
@@ -25,7 +26,6 @@ public class PaymentGatewayResource {
 
     @GET
     @Path("/mode")
-    @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getMode() {
         return forwarder.forward(paymentServiceClient.getMode());
@@ -33,14 +33,12 @@ public class PaymentGatewayResource {
 
     @PUT
     @Path("/mode")
-    @RolesAllowed("admin")
     public Response setMode(@QueryParam("accept") boolean accept) {
         return forwarder.forward(paymentServiceClient.setMode(accept));
     }
 
     @GET
     @Path("/delay")
-    @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getDelay() {
         return forwarder.forward(paymentServiceClient.getDelay());
@@ -48,14 +46,12 @@ public class PaymentGatewayResource {
 
     @PUT
     @Path("/delay")
-    @RolesAllowed("admin")
     public Response setDelay(@QueryParam("seconds") int seconds) {
         return forwarder.forward(paymentServiceClient.setDelay(seconds));
     }
 
     @GET
     @Path("/crash")
-    @RolesAllowed("admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCrash() {
         return forwarder.forward(paymentServiceClient.getCrash());
@@ -63,7 +59,6 @@ public class PaymentGatewayResource {
 
     @PUT
     @Path("/crash")
-    @RolesAllowed("admin")
     public Response setCrash(@QueryParam("enabled") boolean enabled) {
         return forwarder.forward(paymentServiceClient.setCrash(enabled));
     }

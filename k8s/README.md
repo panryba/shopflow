@@ -1,0 +1,305 @@
+# ShopFlow on Minikube
+
+ShopFlow runs as a fully containerised stack on Kubernetes. This document covers local deployment using Minikube and plain Kubernetes manifests (no Helm, no Kustomize). This is **additional** to `docker-compose.yml`, not a replacement — Compose stays the easy day-to-day dev option.
+
+## Architecture
+
+**15 workloads, 16 Pods across 5 layers:**
+
+| Layer          | Component                | Kind        | Replicas |
+| -------------- | ------------------------ | ----------- | -------: |
+| Application    | order-service            | Deployment  |        2 |
+| Application    | payment-service          | Deployment  |        1 |
+| Application    | inventory-service        | Deployment  |        1 |
+| Application    | product-service          | Deployment  |        1 |
+| Application    | gateway                  | Deployment  |        1 |
+| Application    | frontend                 | Deployment  |        1 |
+| Messaging      | Kafka                    | StatefulSet |        1 |
+| Messaging      | Apicurio Schema Registry | Deployment  |        1 |
+| Messaging      | Kafka Exporter           | Deployment  |        1 |
+| Database       | PostgreSQL               | StatefulSet |        1 |
+| Authentication | Keycloak                 | Deployment  |        1 |
+| Observability  | Prometheus               | Deployment  |        1 |
+| Observability  | Loki                     | Deployment  |        1 |
+| Observability  | Alloy                    | Deployment  |        1 |
+| Observability  | Grafana                  | Deployment  |        1 |
+
+`order-service` runs with 2 replicas. Both its saga-timeout job and outbox processor query with `FOR UPDATE SKIP LOCKED` so two pods claiming rows from the same tables can't double-process the same one — see "Testing Concurrent Processing".
+
+Every Service is named identically to its `docker-compose.yml` counterpart (`postgres`, `kafka`, `apicurio-registry`, `keycloak`, `order-service`, ...), and Postgres uses the same credentials Compose already does. Each app's `%prod.*` config hardcodes those exact hostnames, so Kubernetes DNS resolves them the same way Compose's embedded DNS does — order-service, payment-service, inventory-service and gateway need zero env var overrides. Two services need real ones:
+
+- **product-service** (Spring Boot, not Quarkus) — needs `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI`, same as Compose sets.
+- **Keycloak** — no Postgres wiring (Compose doesn't use one either); runs with its default dev store and `start-dev --import-realm`, with `shopflow-realm.json` mounted in.
+
+**Keycloak is reachable only via `localhost:8180`, not through Kubernetes DNS or Ingress, and that's deliberate.** Order-, payment- and inventory-service all have `http://localhost:8180` hardcoded as the JWT issuer. The frontend has the same baked into its build (`environment.prod.ts` → `keycloakUrl`) for browser-side login redirects. Changing the port breaks login for a reason no Kubernetes config can fix — see "Implementation Notes" below for the full explanation.
+
+## Prerequisites
+
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- Docker Desktop running
+- 8 GB RAM available (6 GB minimum with `MINIKUBE_MEMORY=6144` — Docker Desktop's own memory cap varies by machine)
+
+Images (`tbzowka/order-service:latest`, etc.) are pulled from Docker Hub — build/push them first via the existing GitHub Actions pipeline, or point Minikube's Docker daemon at local builds with `eval $(minikube docker-env)`.
+
+## Quick Start
+
+```bash
+cp k8s/secrets.yaml.template k8s/secrets.yaml
+# edit k8s/secrets.yaml if you want non-default credentials
+./k8s/start.sh
+```
+
+`start.sh` starts Minikube if necessary, deploys the stack in dependency order, waits for each tier to become ready, and starts the required port-forwards. It's idempotent — safe to re-run any time.
+
+### Access
+
+- **Application:** http://localhost:4200
+- **Gateway:** http://localhost:8090/api
+- **Keycloak:** http://localhost:8180
+- **Grafana:** http://localhost:3000
+
+## Configuration
+
+### Secrets
+
+Credentials are not committed to the repository:
+
+```bash
+cp k8s/secrets.yaml.template k8s/secrets.yaml
+```
+
+```yaml
+stringData:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  KEYCLOAK_ADMIN: admin
+  KEYCLOAK_ADMIN_PASSWORD: admin
+```
+
+The defaults aren't arbitrary — `order-service` and Keycloak have `postgres`/`postgres` hardcoded in `application.properties` for the prod profile. Change them only if you also change (or override via env) that app config. `k8s/secrets.yaml` is gitignored — never commit it.
+
+### Environment Variables
+
+| Variable             | Default | Description                                      |
+| -------------------- | ------- | ------------------------------------------------ |
+| `MINIKUBE_MEMORY`    | `8192`  | Minikube memory in MB                            |
+| `MINIKUBE_CPUS`      | `4`     | Minikube CPU count                               |
+| `SKIP_OBSERVABILITY` | unset   | Set to `1` to skip Prometheus/Loki/Alloy/Grafana |
+
+```bash
+# Low-memory machine
+MINIKUBE_MEMORY=6144 ./k8s/start.sh
+
+# Skip observability
+SKIP_OBSERVABILITY=1 ./k8s/start.sh
+```
+
+## Deployment
+
+### What `start.sh` does
+
+1. Starts Minikube with the configured resources, enables `metrics-server`
+2. Creates the `shopflow` namespace and applies Secrets
+3. Creates ConfigMaps from the source configuration files (Compose already uses these same files — one source of truth for both deployment methods)
+4. Deploys infrastructure in dependency order — database → messaging → auth → application — waiting for each tier to be ready before starting the next
+5. Applies observability (unless `SKIP_OBSERVABILITY=1`)
+6. Starts port-forwards in the background
+
+Bringing everything up in one shot rather than staged can starve Kafka of the CPU it needs to finish its own startup, which then cascades into every dependent service — that's why the ordering and waiting matters, not just convenience.
+
+### Manual Deployment
+
+For step-by-step deployment or debugging — this is what `start.sh` actually automates:
+
+```bash
+# Namespace and Secrets
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/secrets.yaml
+
+# ConfigMaps generated from existing source files
+kubectl create configmap postgres-init \
+  --from-file=docker/postgres-init.sql \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap keycloak-realm \
+  --from-file=keycloak/shopflow-realm.json \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap prometheus-config \
+  --from-file=monitoring/prometheus/prometheus.yml \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap loki-config \
+  --from-file=monitoring/loki/loki.yml \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap alloy-config \
+  --from-file=monitoring/alloy/config-k8s.alloy \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap grafana-datasources \
+  --from-file=monitoring/grafana/provisioning/datasources \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap grafana-dashboards \
+  --from-file=monitoring/grafana/provisioning/dashboards \
+  -n shopflow --dry-run=client -o yaml | kubectl apply -f -
+
+# Database
+kubectl apply -f k8s/database/
+kubectl wait --for=condition=ready pod -l app=postgres -n shopflow --timeout=180s
+
+# Messaging — timeouts are generous on purpose: a fully cold image pull
+# (nothing cached yet) took Kafka past 4 minutes in testing
+kubectl apply -f k8s/messaging/
+kubectl wait --for=condition=ready pod -l app=kafka -n shopflow --timeout=480s
+kubectl wait --for=condition=ready pod -l app=apicurio-registry -n shopflow --timeout=300s
+
+# Auth
+kubectl apply -f k8s/auth/
+kubectl wait --for=condition=ready pod -l app=keycloak -n shopflow --timeout=480s
+
+# Application
+kubectl apply -f k8s/app/
+kubectl wait --for=condition=ready pod -l app=order-service -n shopflow --timeout=420s
+
+# Observability (optional)
+kubectl apply -f k8s/observability/prometheus-deployment.yaml -f k8s/observability/prometheus-service.yaml
+kubectl apply -f k8s/observability/loki-deployment.yaml -f k8s/observability/loki-service.yaml
+kubectl apply -f k8s/observability/alloy-rbac.yaml -f k8s/observability/alloy-deployment.yaml -f k8s/observability/alloy-service.yaml
+kubectl apply -f k8s/observability/grafana-deployment.yaml -f k8s/observability/grafana-service.yaml
+
+# Port-forwards
+kubectl port-forward svc/frontend 4200:80 -n shopflow &
+kubectl port-forward svc/gateway 8090:8090 -n shopflow &
+kubectl port-forward svc/keycloak 8180:8080 -n shopflow &
+kubectl port-forward svc/grafana 3000:3000 -n shopflow &
+```
+
+## Verifying the Deployment
+
+```bash
+kubectl get pods -n shopflow
+kubectl get services -n shopflow
+kubectl top pods -n shopflow   # needs the metrics-server addon, enabled by start.sh
+```
+
+Expected: every pod `STATUS Running`, `READY 1/1`. A handful of early restarts is normal on a resource-constrained node — the probes are designed to self-heal that; it's only a problem if a pod is stuck in `CrashLoopBackOff` or `Pending` and not recovering.
+
+## Testing Concurrent Processing
+
+`order-service` runs 2 replicas sharing the same PostgreSQL outbox and saga-timeout tables. `FOR UPDATE SKIP LOCKED` prevents concurrent workers from claiming the same row. The outbox publisher's batch size is deliberately reduced to 5 in this deployment (vs. 50 elsewhere) so that a run of this size can't be drained by one replica in a single poll, forcing both replicas to actually compete for rows.
+
+Requires `curl` and `python3`.
+
+Place 10 orders simultaneously:
+
+```bash
+TOKEN=$(curl -s -X POST \
+  http://localhost:8180/realms/shopflow/protocol/openid-connect/token \
+  -d "client_id=shopflow-app&grant_type=password&username=user1&password=password" \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+PRODUCT_ID=$(curl -s http://localhost:8090/api/products -H "Authorization: Bearer $TOKEN" \
+  | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+for i in $(seq 1 10); do
+  curl -s -D - -o /dev/null http://localhost:8090/api/orders \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $(python3 -c 'import uuid; print(uuid.uuid4())')" \
+    -d "{\"items\":[{\"productId\":\"$PRODUCT_ID\",\"quantity\":1,\"price\":1.00}]}" \
+    | grep -i '^location:' | sed 's#.*/orders/##' | tr -d '\r' > "/tmp/order-id-$i.txt" &
+done
+wait
+cat /tmp/order-id-*.txt > /tmp/order-ids.txt
+echo "orders placed: $(wc -l < /tmp/order-ids.txt)"
+```
+
+Verify all 10 sagas completed (allow ~15s for the outbox to flush):
+
+```bash
+sleep 15
+while read -r id; do
+  echo "=== $id ==="
+  curl -s "http://localhost:8090/api/orders/$id" -H "Authorization: Bearer $TOKEN" \
+    | grep -o '"status":"[A-Z_]*"' | tail -n +2
+done < /tmp/order-ids.txt
+```
+
+Expect 10 distinct order IDs, each with a complete, consistent saga sequence and no repeated or missing steps. The exact steps depend on the mode configured in the admin panel.
+
+Optional — confirm both replicas actually competed (not just that nothing broke): count `"Outbox sent"` log lines per pod. Both should be non-zero and roughly even.
+
+```bash
+for pod in $(kubectl get pods -n shopflow -l app=order-service -o jsonpath='{.items[*].metadata.name}'); do
+  echo "=== $pod ==="
+  kubectl logs "$pod" -n shopflow --since=2m | grep -c "Outbox sent"
+done
+```
+
+This exercises concurrent outbox processing across the two `order-service` pods for real, not just the replica count in a manifest.
+
+## Kubernetes Concepts
+
+| Concept                    | Where used                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Deployment                 | Application and observability services                                                                    |
+| StatefulSet                | PostgreSQL, Kafka                                                                                         |
+| PersistentVolumeClaim      | PostgreSQL, Loki, Grafana data volumes                                                                    |
+| ConfigMap                  | Application and observability configuration                                                               |
+| Secret                     | Database credentials, Keycloak admin credentials                                                          |
+| Liveness / readiness probe | Quarkus services: `/q/health/live`, `/q/health/ready` — product-service (Spring Boot): `/actuator/health` |
+| Startup probe              | Every JVM-based Deployment — see "Implementation Notes"                                                   |
+| Resource requests/limits   | Every container, sized from real `kubectl top` data, not guesses                                          |
+| Multiple replicas          | `order-service` × 2                                                                                       |
+| Rolling update strategy    | All 6 application Deployments — `maxUnavailable: 0`, `maxSurge: 1`                                        |
+| Service / DNS              | Inter-service communication by Kubernetes Service name, matching Compose's names                          |
+| Namespace                  | All ShopFlow resources isolated in `shopflow`                                                             |
+
+## Troubleshooting
+
+### Pod stuck in Pending
+
+```bash
+kubectl describe pod <pod-name> -n shopflow
+```
+
+Usually insufficient resources. Try `MINIKUBE_MEMORY=6144 ./k8s/start.sh`, or if that's already the case, trim something else — see "Resource sizing" implementation note.
+
+### Port-forward connection dropped
+
+`kubectl port-forward` is tied to a specific pod, not the Service — a rollout, a crash, a rescheduling, anything that replaces the pod kills it silently (no error in your terminal). Re-run `./k8s/start.sh` (idempotent, refreshes the port-forwards) or manually:
+
+```bash
+kubectl port-forward svc/frontend 4200:80 -n shopflow &
+kubectl port-forward svc/gateway 8090:8090 -n shopflow &
+kubectl port-forward svc/keycloak 8180:8080 -n shopflow &
+kubectl port-forward svc/grafana 3000:3000 -n shopflow &
+```
+
+### Keycloak not ready
+
+```bash
+kubectl logs -f deployment/keycloak -n shopflow
+```
+
+Realm import alone takes ~100s; with a cold image pull on top, budget several minutes before it's actually stuck rather than just slow.
+
+### Check logs for any service
+
+```bash
+kubectl logs -f deployment/order-service -n shopflow
+kubectl logs -f statefulset/kafka -n shopflow
+```
+
+## Implementation Notes
+
+- **Ingress** — `k8s/ingress.yaml` routes correctly but isn't part of the local workflow: OAuth2/PKCE needs a secure context (HTTPS or `localhost`), and `http://shopflow.local` is neither. Fixing that needs real TLS, which only pays off with a real domain and automated certs (cert-manager + Let's Encrypt on a cloud deployment) — a self-signed cert here would just mean manual per-machine browser trust for no benefit over port-forward. Ingress stays in the repo to show host-based routing is understood, and becomes relevant again on a cloud deployment.
+- **Persistent storage** — PostgreSQL, Loki, and Grafana are backed by PersistentVolumeClaims, so their data survives pod restarts and replacements.
+- **Kafka networking** — Kafka's Service is headless (`clusterIP: None`) with `publishNotReadyAddresses: true`. KRaft's controller quorum has the broker reach *itself* by Service name; a normal ClusterIP is a virtual IP, and a pod hairpinning back to itself through its own Service VIP isn't reliable on Minikube's basic bridge CNI. Headless DNS resolves straight to the real pod IP instead, sidestepping that — also the textbook-correct pattern for a StatefulSet's governing Service. `publishNotReadyAddresses` is needed on top because a headless Service still only publishes a pod's DNS entry once it's *Ready* by default, and Kafka can't become Ready until it resolves and reaches itself.
+- **JVM startup time** — every JVM-based Deployment has a `startupProbe` so liveness/readiness don't start evaluating (and killing the container mid-boot) before it's actually finished starting. Keycloak's realm import alone took ~100s in testing, product-service ~30-45s.
+- **Alloy RBAC and networking** — needs `pods` and `pods/log` (not just `pods`) in its RBAC Role to discover and tail pod logs, and an explicit `--server.http.listen-addr=0.0.0.0:12345` — it defaults to a loopback-only bind, which its own liveness/readiness probes can never reach otherwise.
+- **Prometheus's `order-service` target is the Service DNS name** — with 2 replicas it only ever scrapes whichever pod the Service routes to per scrape, not both. Not broken, just not true per-replica metrics; would need `kubernetes_sd_configs` to fix properly.
+- **Resource sizing** — requests/limits are set from real `kubectl top pods -n shopflow` data (`minikube addons enable metrics-server`), not the original draft's guesses. Several were significantly over-requested (postgres: 71Mi actual vs 512Mi originally requested); a couple run slightly over their request at peak (Keycloak, Grafana) but stay well under their limit, so left as-is rather than reserving scheduler headroom that doesn't change real usage.

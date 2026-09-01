@@ -1,4 +1,4 @@
-# CLAUDE.md
+    # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -95,7 +95,10 @@ presentation/
   rest/           — OrderResource
 ```
 
-payment-service and inventory-service are thin: a single `*EventConsumer` class with hardcoded business logic (payment accepts if amount < 1000; inventory always accepts, comment out the flag to simulate rejection).
+payment-service and inventory-service are thin: a single `*EventConsumer` class per service, with runtime-toggleable behavior driven by the frontend's admin panel (`AdminComponent`) via admin-only REST endpoints (`PUT /payment/mode` / `PUT /inventory/mode`, proxied through the gateway as `PUT /api/payment/mode` / `PUT /api/inventory/mode`) — no code change or restart needed. Three independent flags per consumer:
+- **Acceptance mode** — mutable `accepted` flag (default `true`), set via `setAccepted()`. Decides accept vs. reject for every message processed while it's set.
+- **Delay** — artificial sleep before processing each message.
+- **Failure simulation ("crash")** — forces the consumer to throw on every message, triggering the DLQ after 5 retries; the saga times out rather than reaching a normal terminal state.
 
 ## Key Patterns
 

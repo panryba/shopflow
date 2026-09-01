@@ -44,3 +44,6 @@ build/
 ### Frontend test artifacts ###
 frontend/playwright-report/
 frontend/test-results/
+
+### Kubernetes (Minikube) ###
+k8s/secrets.yaml

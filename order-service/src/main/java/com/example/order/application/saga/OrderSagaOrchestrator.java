@@ -140,7 +140,7 @@ public class OrderSagaOrchestrator {
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.failPayment(new OrderId(event.orderId()));
-        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_FAILED));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_FAILED, true));
         saga.setStep(OrderSagaState.SagaStep.CANCELLED);
         sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
         metrics.sagaCancelled(event.orderId());
@@ -157,7 +157,7 @@ public class OrderSagaOrchestrator {
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         service.approveInventory(new OrderId(event.orderId()));
-        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_APPROVED));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.INVENTORY_APPROVED, true));
         saga.setStep(OrderSagaState.SagaStep.COMPLETED);
         sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
         metrics.sagaCompleted(event.orderId());
@@ -198,7 +198,7 @@ public class OrderSagaOrchestrator {
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED) return;
 
         historyService.record(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK);
-        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(event.orderId(), HistoryStatus.PAYMENT_ROLLED_BACK, true));
         saga.setStep(OrderSagaState.SagaStep.CANCELLED);
         sagaCompletedEvent.fire(new OrderSagaCompletedEvent(event.orderId()));
         metrics.sagaCancelled(event.orderId());
@@ -214,8 +214,9 @@ public class OrderSagaOrchestrator {
         if (saga == null || saga.getStep() == OrderSagaState.SagaStep.CANCELLED
                 || saga.getStep() == OrderSagaState.SagaStep.COMPLETED) return;
 
+        boolean immediatelyTerminal = saga.getStep() != OrderSagaState.SagaStep.WAITING_INVENTORY;
         service.cancel(orderId);
-        statusChangedEvent.fire(new OrderStatusChangedEvent(orderId.value(), HistoryStatus.CANCELLED));
+        statusChangedEvent.fire(new OrderStatusChangedEvent(orderId.value(), HistoryStatus.CANCELLED, immediatelyTerminal));
 
         if (saga.getStep() == OrderSagaState.SagaStep.WAITING_INVENTORY) {
             outbox.save(

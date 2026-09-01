@@ -47,7 +47,7 @@ public class SagaTimeoutJob {
         switch (saga.getStep()) {
             case WAITING_PAYMENT, WAITING_ROLLBACK -> {
                 orderService.cancel(orderId);
-                statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED));
+                statusChangedEvent.fire(new OrderStatusChangedEvent(saga.getOrderId(), HistoryStatus.CANCELLED, true));
                 saga.setStep(OrderSagaState.SagaStep.CANCELLED);
                 sagaCompletedEvent.fire(new OrderSagaCompletedEvent(saga.getOrderId()));
                 metrics.sagaCancelled(saga.getOrderId());

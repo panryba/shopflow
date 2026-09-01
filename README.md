@@ -64,6 +64,8 @@ docker compose up
 | user1 | password | user |
 | admin | password | admin |
 
+For Kubernetes deployment using Minikube, see the [Kubernetes Deployment](#kubernetes-deployment) section below.
+
 ---
 
 ## Architecture
@@ -145,7 +147,7 @@ The `order-service` is structured in three layers with strict dependency directi
 - Application — use cases and saga orchestration, depends only on domain
 - Infrastructure — Kafka, JPA, outbox, inbox; adapters implement output ports where abstraction is meaningful
 
-No Quarkus, JPA, or Kafka annotations appear in the domain layer. Infrastructure implements ports defined by the application layer and depends inward — never the other way around.
+No Quarkus, JPA, or Kafka annotations appear in the domain layer. Infrastructure implements ports defined by the application layer, with dependencies always pointing inward — never the other way around.
 
 Output ports are defined for repository access and history recording. Cross-cutting concerns such as metrics, inbox idempotency, and outbox reliability are injected directly into the application layer, avoiding unnecessary abstractions.
 
@@ -167,7 +169,7 @@ Unreachable downstream services map to `502 Bad Gateway`, open circuits return `
 The `order-service` owns the entire order lifecycle and drives every step explicitly. It decides what happens next based on each response — no choreography, no implicit coupling between services. The saga state (`WAITING_PAYMENT` → `WAITING_INVENTORY` → `COMPLETED` / `WAITING_ROLLBACK` → `CANCELLED`) is persisted in the database, making it recoverable after a restart. `WAITING_ROLLBACK` exists because payment is charged before inventory is checked — if inventory rejects, the charge must be reversed before the order can be cancelled.
 
 #### Transactional Outbox
-The orchestrator never publishes to Kafka directly inside a business transaction. Instead it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried.
+The orchestrator never publishes to Kafka directly inside a business transaction. Instead, it writes an `outbox` row in the same transaction as the domain change. A scheduled publisher reads pending rows and publishes them to Kafka, then marks them sent. This eliminates the dual-write problem: if the service crashes after committing the DB transaction but before publishing, the outbox row survives and will be retried.
 
 Outbox publishing produces at-least-once delivery — retries after a crash may result in duplicate sends, which the Inbox pattern handles on the consumer side. The outbox query uses `FOR UPDATE SKIP LOCKED` so concurrent pods never pick up the same rows. Failed publishes increment a retry counter and record the last error. Events that exhaust all retries are flagged as dead: the readiness health check flips unhealthy and an ERROR is logged every minute — both visible in Grafana. Dead events are retained until the cleanup window expires rather than deleted immediately, allowing manual investigation.
 
@@ -479,13 +481,45 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product
 
 ---
 
+## Kubernetes Deployment
+
+ShopFlow can be deployed as a complete stack to a local Kubernetes cluster using Minikube and plain Kubernetes manifests. The Kubernetes deployment includes:
+
+- Java microservices and Angular frontend
+- PostgreSQL with persistent storage
+- Kafka and Apicurio Schema Registry
+- Keycloak
+- Prometheus, Loki, Alloy and Grafana
+- Kubernetes Services and DNS-based service discovery
+- ConfigMaps and Secrets
+- Startup, liveness and readiness probes
+- CPU and memory resource requests/limits
+- Multiple `order-service` replicas
+- Rolling updates
+
+**Quick start:**
+
+```bash
+cp k8s/secrets.yaml.template k8s/secrets.yaml
+# Edit k8s/secrets.yaml with your credentials
+./k8s/start.sh
+```
+
+Access at http://localhost:4200
+
+See [k8s/README.md](k8s/README.md) for full documentation.
+
+Docker Compose remains the recommended option for day-to-day development. The Kubernetes deployment demonstrates container orchestration on a local cluster.
+
+---
+
 ## Tests
 
 ```bash
 cd order-service     && ./mvnw test   # 46 tests
 cd payment-service   && ./mvnw test   # 4 tests
 cd inventory-service && ./mvnw test   # 3 tests
-cd product-service   && ./mvnw test   # 20 tests
+cd product-service   && ./mvnw test   # 21 tests
 ```
 
 **order-service** — `@QuarkusTest` integration tests with Testcontainers (PostgreSQL, Kafka, Apicurio Schema Registry):
@@ -532,3 +566,4 @@ npx playwright show-report     # open HTML report after a run
 - [x] **Observability** — Micrometer metrics, Prometheus, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically; Correlation ID distributed tracing via dedicated Loki dashboard
 - [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (order-service); `@SpringBatchTest` + Testcontainers PostgreSQL (product-service); full saga flows, HTTP contract validation, outbox publisher testing, CSV import workflows; Playwright E2E tests for happy path, failure path, and authentication
 - [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service (own PostgreSQL schema)
+- [x] **Kubernetes Deployment** — full stack on Minikube via plain manifests, Services + DNS, ConfigMaps/Secrets, health probes, resource limits, multi-replica order-service with rolling updates

@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) ![ArgoCD](https://img.shields.io/badge/ArgoCD-EF7B4D?logo=argo&logoColor=white) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
 
 ---
 
@@ -10,8 +10,11 @@ A production-shaped online shop built as a microservices portfolio project, demo
 
 - **Architecture** — Hexagonal Architecture, Domain-Driven Design, API Gateway
 - **Reliability** — Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control
-- **Messaging** — Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
+- **Messaging** — Apache Kafka, Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
 - **Observability** — Micrometer, Prometheus, Loki, Grafana
+- **Deployment** — Docker Compose, Kubernetes (Minikube), GitOps with ArgoCD, GitHub Actions CI/CD
+- **Testing** — QuarkusTest + Testcontainers, SpringBatchTest, Mockito, REST Assured, Playwright E2E
+- **Frontend** — Angular, TypeScript, PrimeNG, nginx
 
 ### Create Order Flow
 
@@ -426,8 +429,8 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT, Spring Security |
 | Observability | Micrometer, Prometheus 3.11, Loki 3.7.0, Grafana Alloy 1.8.1, Grafana 13.0 |
 | API | JAX-RS, OpenAPI / Swagger UI |
-| Testing | JUnit 5, Mockito, Testcontainers, Quarkus Test Framework, Spring Batch Test, Playwright |
-| Infrastructure | Docker, Docker Compose, GitHub Actions |
+| Testing | JUnit 5, Mockito, Testcontainers, Quarkus Test Framework, REST Assured, Spring Batch Test, Playwright |
+| Infrastructure | Docker, Docker Compose, Kubernetes, Minikube, ArgoCD, GitHub Actions |
 
 ---
 
@@ -471,13 +474,16 @@ graph LR
         F["build-frontend<br/>─────────────<br/>Node 24<br/>npm ci<br/>npm run build<br/>npm test<br/>(when tests exist)"]
     end
 
-    D["docker-push<br/>─────────────<br/>restore from cache<br/>build 5 images<br/>push to Docker Hub<br/>(master only)"]
+    D["docker-push<br/>─────────────<br/>restore from cache<br/>build 6 images<br/>push to Docker Hub<br/>(master only)"]
+
+    U["update-manifests<br/>─────────────<br/>pin k8s/app/*.yaml<br/>image tags to this SHA<br/>commit + push [skip ci]<br/>(master only)"]
 
     B --> D
     F --> D
+    D --> U
 ```
 
-Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product-service,gateway,frontend}:latest`
+Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product-service,gateway,frontend}` tagged both `:latest` and `:<commit-sha>`. `update-manifests` then pins the SHA tag into `k8s/app/*.yaml` and pushes that commit — ArgoCD picks it up from there (see [Kubernetes Deployment](#kubernetes-deployment)).
 
 ---
 
@@ -496,6 +502,7 @@ ShopFlow can be deployed as a complete stack to a local Kubernetes cluster using
 - CPU and memory resource requests/limits
 - Multiple `order-service` replicas
 - Rolling updates
+- GitOps deployment with ArgoCD
 
 **Quick start:**
 
@@ -507,9 +514,9 @@ cp k8s/secrets.yaml.template k8s/secrets.yaml
 
 Access at http://localhost:4200
 
-See [k8s/README.md](k8s/README.md) for full documentation.
+See [k8s/README.md](k8s/README.md) for full documentation, including the ArgoCD GitOps workflow.
 
-Docker Compose remains the recommended option for day-to-day development. The Kubernetes deployment demonstrates container orchestration on a local cluster.
+Docker Compose remains the recommended option for day-to-day development. The Kubernetes deployment demonstrates container orchestration on a local cluster, while ArgoCD demonstrates GitOps-based application delivery.
 
 ---
 
@@ -567,3 +574,4 @@ npx playwright show-report     # open HTML report after a run
 - [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (order-service); `@SpringBatchTest` + Testcontainers PostgreSQL (product-service); full saga flows, HTTP contract validation, outbox publisher testing, CSV import workflows; Playwright E2E tests for happy path, failure path, and authentication
 - [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service (own PostgreSQL schema)
 - [x] **Kubernetes Deployment** — full stack on Minikube via plain manifests, Services + DNS, ConfigMaps/Secrets, health probes, resource limits, multi-replica order-service with rolling updates
+- [x] **GitOps Deployment (ArgoCD)** — CI pins each build's image tag into the app-tier manifests and pushes the commit; ArgoCD watches `k8s/app/` and reconciles the cluster to match, with the UI and auto-sync enabled

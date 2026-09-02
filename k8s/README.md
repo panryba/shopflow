@@ -234,6 +234,40 @@ done
 
 This exercises concurrent outbox processing across the two `order-service` pods for real, not just the replica count in a manifest.
 
+## GitOps with ArgoCD
+
+CI (GitHub Actions) and CD (ArgoCD) are deliberately separate here: CI builds, tests, and pushes an image, then pins its tag in `k8s/app/*.yaml` and pushes that commit; ArgoCD is the thing that actually watches Git and reconciles the cluster to match it. Scoped to `k8s/app/` only — the database/messaging/auth/observability tiers stay `start.sh`'s job; see the comment in `k8s/argocd/application.yaml` for why.
+
+### Install
+
+```bash
+kubectl apply -f k8s/argocd/namespace.yaml
+kubectl apply -n argocd -f k8s/argocd/install.yaml
+kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
+kubectl apply -f k8s/argocd/application.yaml
+```
+
+### Access the UI
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+Open https://localhost:8080 (self-signed cert — browser warning is expected). Username `admin`, password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+echo
+```
+
+### Demo the loop
+
+```bash
+kubectl get application shopflow-app -n argocd -o jsonpath='{.status.sync.status}{"\n"}{.status.health.status}{"\n"}'
+```
+
+Expect `Synced` / `Healthy`. Push any change to a file under `k8s/app/` (or just push to `master` normally — CI's `update-manifests` job pins the image tags there on every build) and watch the same command transition to `OutOfSync` and back to `Synced` as ArgoCD detects the Git change and reconciles the application, without running `kubectl apply` yourself. `kubectl get pods -n shopflow -l app=order-service` confirms the rollout actually happened.
+
 ## Kubernetes Concepts
 
 | Concept                    | Where used                                                                                                |

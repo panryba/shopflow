@@ -91,6 +91,7 @@ pkill -f "port-forward svc/frontend" 2>/dev/null || true
 pkill -f "port-forward svc/keycloak" 2>/dev/null || true
 pkill -f "port-forward svc/gateway" 2>/dev/null || true
 pkill -f "port-forward svc/grafana" 2>/dev/null || true
+pkill -f "port-forward svc/argocd-server" 2>/dev/null || true
 
 kubectl port-forward svc/frontend 4200:80 -n "$NAMESPACE" >/dev/null 2>&1 &
 disown
@@ -102,6 +103,10 @@ if [ "${SKIP_OBSERVABILITY:-}" != "1" ]; then
   kubectl port-forward svc/grafana 3000:3000 -n "$NAMESPACE" >/dev/null 2>&1 &
   disown
 fi
+if kubectl get svc argocd-server -n argocd &>/dev/null; then
+  kubectl port-forward svc/argocd-server -n argocd 8080:443 >/dev/null 2>&1 &
+  disown
+fi
 sleep 3
 
 echo
@@ -111,6 +116,9 @@ echo "  Gateway:  http://localhost:8090/api"
 echo "  Keycloak: http://localhost:8180"
 if [ "${SKIP_OBSERVABILITY:-}" != "1" ]; then
   echo "  Grafana:  http://localhost:3000"
+fi
+if kubectl get svc argocd-server -n argocd &>/dev/null; then
+  echo "  ArgoCD:   https://localhost:8080"
 fi
 echo
 echo "Port-forwards die if their pod restarts — re-run this script (it's"

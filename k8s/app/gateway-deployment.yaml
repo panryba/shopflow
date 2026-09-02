@@ -29,7 +29,7 @@ spec:
       containers:
         - name: gateway
           image: tbzowka/gateway:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8090
           resources:

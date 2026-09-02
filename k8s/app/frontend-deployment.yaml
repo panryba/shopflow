@@ -26,7 +26,7 @@ spec:
       containers:
         - name: frontend
           image: tbzowka/frontend:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           resources:

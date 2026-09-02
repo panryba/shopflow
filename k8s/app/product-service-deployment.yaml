@@ -36,7 +36,7 @@ spec:
       containers:
         - name: product-service
           image: tbzowka/product-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084
           env:

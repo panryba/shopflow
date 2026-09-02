@@ -45,7 +45,7 @@ spec:
       containers:
         - name: order-service
           image: tbzowka/order-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:

@@ -30,7 +30,7 @@ spec:
       containers:
         - name: payment-service
           image: tbzowka/payment-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8081
           resources:

@@ -35,7 +35,7 @@ spec:
           command: ["sh", "-c", "until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done"]
       containers:
         - name: product-service
-          image: tbzowka/product-service:5c01e159878954296782424173f49b3d8a63dfac
+          image: tbzowka/product-service:cd055518f261ed10ea05580ec796de39890e31f5
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084

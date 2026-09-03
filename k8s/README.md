@@ -270,20 +270,22 @@ echo
 
 ### Demo the loop
 
+Check current state:
+
 ```bash
 kubectl get application shopflow-app -n argocd -o jsonpath='{.status.sync.status}{"\n"}{.status.health.status}{"\n"}'
 ```
 
-Expect `Synced` / `Healthy`, with `.status.sync.revision` matching `git log --oneline -1` on `master`. Same check without `kubectl`: the GitHub Actions tab shows the push's run with all 4 jobs green, and the commit history shows an auto-generated `chore: pin k8s app images to <sha> [skip ci]` commit from `github-actions[bot]` right after it.
+Expect `Synced` / `Healthy`.
 
-To watch the loop happen rather than just confirm the end state, push any change to `master` and in parallel:
+Push any change to `master` and watch ArgoCD reconcile without running `kubectl apply`:
 
 ```bash
 kubectl get application shopflow-app -n argocd -w
 kubectl get pods -n shopflow -w
 ```
 
-No `kubectl apply` involved — sync status flips `Synced` → `OutOfSync` → `Progressing` → back to `Synced`/`Healthy` as ArgoCD picks up the bot's commit, and the pod list shows the old one terminating while the new one starts on the freshly-pinned image.
+Status transitions: `Synced` → `OutOfSync` → `Progressing` → `Synced` / `Healthy`.
 
 ## Kubernetes Concepts
 

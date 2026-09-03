@@ -26,6 +26,8 @@ ShopFlow runs as a fully containerised stack on Kubernetes. This document covers
 
 `order-service` runs with 2 replicas. `FOR UPDATE SKIP LOCKED` prevents concurrent outbox workers from claiming the same row — see "Testing Concurrent Processing".
 
+This table is the core ShopFlow stack only. ArgoCD (optional, 7 more workloads in its own `argocd` namespace) is covered separately in "GitOps with ArgoCD" below.
+
 ## Prerequisites
 
 - [Minikube](https://minikube.sigs.k8s.io/docs/start/)
@@ -97,7 +99,7 @@ SKIP_OBSERVABILITY=1 ./k8s/start.sh
 3. Creates ConfigMaps from the source configuration files (Compose already uses these same files — one source of truth for both deployment methods)
 4. Deploys infrastructure in dependency order — database → messaging → auth → application — waiting for each tier to be ready before starting the next
 5. Applies observability (unless `SKIP_OBSERVABILITY=1`)
-6. Starts port-forwards in the background
+6. Starts port-forwards in the background — including ArgoCD's UI, if it's already installed (see "GitOps with ArgoCD")
 
 Bringing everything up in one shot rather than staged can starve Kafka of the CPU it needs to finish its own startup, which then cascades into every dependent service — that's why the ordering and waiting matters, not just convenience.
 
@@ -238,11 +240,17 @@ This exercises concurrent outbox processing across the two `order-service` pods 
 
 CI (GitHub Actions) and CD (ArgoCD) are deliberately separate here: CI builds, tests, and pushes an image, then pins its tag in `k8s/app/*.yaml` and pushes that commit; ArgoCD is the thing that actually watches Git and reconciles the cluster to match it. Scoped to `k8s/app/` only — the database/messaging/auth/observability tiers stay `start.sh`'s job; see the comment in `k8s/argocd/application.yaml` for why.
 
+Not installed by `start.sh` automatically — it's opt-in. Install it once with the steps below; after that, `start.sh` detects it on every subsequent run and manages its port-forward alongside the others.
+
+ArgoCD's full install (application-controller, applicationset-controller, dex-server, notifications-controller, redis, repo-server, server/UI — 7 more workloads) adds real memory pressure on top of the core stack. If you're already close to your `MINIKUBE_MEMORY` ceiling, raise it before installing — on a running cluster, that means recreating it (`minikube delete` then `MINIKUBE_MEMORY=<higher> ./k8s/start.sh`), since Minikube won't apply a new memory value to an existing profile.
+
 ### Install
+
+`kubectl apply` fails on this manifest: the `applicationsets.argoproj.io` CRD's schema is large enough that the client-side `last-applied-configuration` annotation `apply` normally writes exceeds Kubernetes' 256KiB annotation limit. `--server-side` avoids it entirely (skips that annotation), which is why it's used here rather than a plain `apply`:
 
 ```bash
 kubectl apply -f k8s/argocd/namespace.yaml
-kubectl apply -n argocd -f k8s/argocd/install.yaml
+kubectl apply -n argocd -f k8s/argocd/install.yaml --server-side --force-conflicts
 kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
 kubectl apply -f k8s/argocd/application.yaml
 ```
@@ -266,7 +274,16 @@ echo
 kubectl get application shopflow-app -n argocd -o jsonpath='{.status.sync.status}{"\n"}{.status.health.status}{"\n"}'
 ```
 
-Expect `Synced` / `Healthy`. Push any change to a file under `k8s/app/` (or just push to `master` normally — CI's `update-manifests` job pins the image tags there on every build) and watch the same command transition to `OutOfSync` and back to `Synced` as ArgoCD detects the Git change and reconciles the application, without running `kubectl apply` yourself. `kubectl get pods -n shopflow -l app=order-service` confirms the rollout actually happened.
+Expect `Synced` / `Healthy`, with `.status.sync.revision` matching `git log --oneline -1` on `master`. Same check without `kubectl`: the GitHub Actions tab shows the push's run with all 4 jobs green, and the commit history shows an auto-generated `chore: pin k8s app images to <sha> [skip ci]` commit from `github-actions[bot]` right after it.
+
+To watch the loop happen rather than just confirm the end state, push any change to `master` and in parallel:
+
+```bash
+kubectl get application shopflow-app -n argocd -w
+kubectl get pods -n shopflow -w
+```
+
+No `kubectl apply` involved — sync status flips `Synced` → `OutOfSync` → `Progressing` → back to `Synced`/`Healthy` as ArgoCD picks up the bot's commit, and the pod list shows the old one terminating while the new one starts on the freshly-pinned image.
 
 ## Kubernetes Concepts
 
@@ -284,6 +301,8 @@ Expect `Synced` / `Healthy`. Push any change to a file under `k8s/app/` (or just
 | Rolling update strategy    | All 6 application Deployments — `maxUnavailable: 0`, `maxSurge: 1`                                        |
 | Service / DNS              | Inter-service communication by Kubernetes Service name, matching Compose's names                          |
 | Namespace                  | All ShopFlow resources isolated in `shopflow`                                                             |
+| Custom Resource Definition | ArgoCD's `Application`/`AppProject` types, in `argocd`                                                    |
+| GitOps / continuous reconciliation | ArgoCD watches `k8s/app/` in Git and reconciles the cluster to match — see "GitOps with ArgoCD"    |
 
 ## Troubleshooting
 

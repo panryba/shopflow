@@ -35,7 +35,7 @@ spec:
           command: ["sh", "-c", "until nc -z mongo 27017; do echo waiting for mongo; sleep 2; done"]
       containers:
         - name: product-service
-          image: tbzowka/product-service:d9234ee032767f9607c133d8a5c374ef5364f910
+          image: tbzowka/product-service:9df6342c1b4847e24d34cc77d3d7da5d3f940682
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084

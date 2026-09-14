@@ -18,8 +18,8 @@ public class OrderItemEntity {
     @Id
     private UUID id;
 
-    @Column(name = "product_id")
-    private UUID productId;
+    @Column(name = "product_id", length = 64)
+    private String productId;
 
     private int quantity;
 

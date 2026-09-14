@@ -16,14 +16,19 @@ import java.util.List;
 @Getter
 public class ProductSkipListener implements SkipListener<ProductCsv, Product> {
 
+    // Both supported formats (category,artist,title,price,imageUrl and
+    // category,manufacturer,name,price,imageUrl) are always 5 columns wide.
+    private static final int EXPECTED_COLUMNS = 5;
+
     private final List<SkippedRecord> skippedRecords = new ArrayList<>();
 
     @Override
     public void onSkipInRead(@NonNull Throwable t) {
         if (t instanceof FlatFileParseException e) {
+            int found = e.getInput().split(",", -1).length;
             skippedRecords.add(new SkippedRecord(
                     "Line " + e.getLineNumber(),
-                    "Wrong number of columns (expected 4): " + e.getInput()
+                    "Wrong number of columns. Required " + EXPECTED_COLUMNS + ", found " + found
             ));
         }
     }
@@ -39,7 +44,7 @@ public class ProductSkipListener implements SkipListener<ProductCsv, Product> {
     @Override
     public void onSkipInWrite(@NonNull Product item, @NonNull Throwable t) {
         skippedRecords.add(new SkippedRecord(
-                item.getArtist() + " – " + item.getTitle(),
+                String.join(" – ", item.getAttributes().values()),
                 t.getMessage()
         ));
     }

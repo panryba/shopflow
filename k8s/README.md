@@ -4,7 +4,7 @@ ShopFlow runs as a fully containerised stack on Kubernetes. This document covers
 
 ## Architecture
 
-**15 workloads, 16 Pods across 5 layers:**
+**16 workloads, 17 Pods across 5 layers:**
 
 | Layer          | Component                | Kind        | Replicas |
 | -------------- | ------------------------ | ----------- | -------: |
@@ -18,6 +18,7 @@ ShopFlow runs as a fully containerised stack on Kubernetes. This document covers
 | Messaging      | Apicurio Schema Registry | Deployment  |        1 |
 | Messaging      | Kafka Exporter           | Deployment  |        1 |
 | Database       | PostgreSQL               | StatefulSet |        1 |
+| Database       | MongoDB                  | StatefulSet |        1 |
 | Authentication | Keycloak                 | Deployment  |        1 |
 | Observability  | Prometheus               | Deployment  |        1 |
 | Observability  | Loki                     | Deployment  |        1 |
@@ -68,11 +69,13 @@ cp k8s/secrets.yaml.template k8s/secrets.yaml
 stringData:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
+  MONGO_USER: product
+  MONGO_PASSWORD: product
   KEYCLOAK_ADMIN: admin
   KEYCLOAK_ADMIN_PASSWORD: admin
 ```
 
-The defaults aren't arbitrary — `order-service` and Keycloak have `postgres`/`postgres` hardcoded in `application.properties` for the prod profile. Change them only if you also change (or override via env) that app config. `k8s/secrets.yaml` is gitignored — never commit it.
+The defaults aren't arbitrary — `order-service` and Keycloak have `postgres`/`postgres` hardcoded in `application.properties` for the prod profile, and `product-service` has `product`/`product`. Change them only if you also change (or override via env) that app config. `k8s/secrets.yaml` is gitignored — never commit it.
 
 ### Environment Variables
 
@@ -113,8 +116,8 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/secrets.yaml
 
 # ConfigMaps generated from existing source files
-kubectl create configmap postgres-init \
-  --from-file=docker/postgres-init.sql \
+kubectl create configmap mongo-init \
+  --from-file=docker/mongo-init.js \
   -n shopflow --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create configmap keycloak-realm \
@@ -144,6 +147,7 @@ kubectl create configmap grafana-dashboards \
 # Database
 kubectl apply -f k8s/database/
 kubectl wait --for=condition=ready pod -l app=postgres -n shopflow --timeout=180s
+kubectl wait --for=condition=ready pod -l app=mongo -n shopflow --timeout=180s
 
 # Messaging — timeouts are generous on purpose: a fully cold image pull
 # (nothing cached yet) took Kafka past 4 minutes in testing
@@ -292,8 +296,8 @@ Status transitions: `Synced` → `OutOfSync` → `Progressing` → `Synced` / `H
 | Concept                    | Where used                                                                                                |
 | -------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Deployment                 | Application and observability services                                                                    |
-| StatefulSet                | PostgreSQL, Kafka                                                                                         |
-| PersistentVolumeClaim      | PostgreSQL, Loki, Grafana data volumes                                                                    |
+| StatefulSet                | PostgreSQL, MongoDB, Kafka                                                                                 |
+| PersistentVolumeClaim      | PostgreSQL, MongoDB, Loki, Grafana data volumes                                                           |
 | ConfigMap                  | Application and observability configuration                                                               |
 | Secret                     | Database credentials, Keycloak admin credentials                                                          |
 | Liveness / readiness probe | Quarkus services: `/q/health/live`, `/q/health/ready` — product-service (Spring Boot): `/actuator/health` |
@@ -346,10 +350,11 @@ kubectl logs -f statefulset/kafka -n shopflow
 
 - **Keycloak access** — reachable only via `localhost:8180`, not through Kubernetes DNS. order-, payment- and inventory-service hardcode `http://localhost:8180` as the JWT issuer, and the frontend has it baked into its build (`environment.prod.ts`). Changing the port breaks login for a reason no Kubernetes config can fix — port-forward is the only viable local path.
 - **Ingress** — `k8s/ingress.yaml` routes correctly but isn't part of the local workflow: OAuth2/PKCE needs a secure context (HTTPS or `localhost`), and `http://shopflow.local` is neither. Fixing that needs real TLS, which only pays off with a real domain and automated certs (cert-manager + Let's Encrypt on a cloud deployment). Ingress stays in the repo to show host-based routing is understood, and becomes relevant again on a cloud deployment.
-- **Persistent storage** — PostgreSQL, Loki, and Grafana are backed by PersistentVolumeClaims, so their data survives pod restarts and replacements.
+- **Persistent storage** — PostgreSQL, MongoDB, Loki, and Grafana are backed by PersistentVolumeClaims, so their data survives pod restarts and replacements.
+- **Polyglot persistence** — order-service (relational, Flyway-managed saga/outbox schema, JPA transactions) stays on PostgreSQL; product-service (a flat, document-shaped catalogue with no relations) moved to MongoDB. Its Spring Batch CSV importer uses `ResourcelessJobRepository` (Spring Batch 6's default when no relational `DataSource` is present) rather than a JDBC- or Mongo-backed job repository — each import is a one-shot, non-restartable run whose execution history nothing in this app ever queries back, so there's nothing worth persisting for it.
 - **Kafka networking** — Kafka's Service is headless (`clusterIP: None`) with `publishNotReadyAddresses: true`. KRaft's controller quorum has the broker reach itself by Service name; a normal ClusterIP is a virtual IP, and a pod hairpinning back to itself through its own Service VIP isn't reliable on Minikube's basic bridge CNI. Headless DNS resolves straight to the real pod IP instead. `publishNotReadyAddresses` is needed because a headless Service only publishes a pod's DNS entry once it's Ready by default, and Kafka can't become Ready until it resolves and reaches itself.
 - **JVM startup time** — every JVM-based Deployment has a `startupProbe` so liveness/readiness don't start evaluating before the service has finished starting. Keycloak's realm import alone took ~100s in testing, product-service ~30-45s.
 - **Alloy RBAC and networking** — needs `pods` and `pods/log` in its RBAC Role to discover and tail pod logs, and an explicit `--server.http.listen-addr=0.0.0.0:12345` — it defaults to a loopback-only bind, which its own liveness/readiness probes can never reach.
 - **Prometheus scraping** — with 2 order-service replicas, Prometheus only scrapes whichever pod the Service routes to per scrape, not both. Not broken, just not true per-replica metrics; would need `kubernetes_sd_configs` to fix properly.
-- **Resource sizing** — requests/limits are set from real `kubectl top pods` data, not guesses. Several were significantly over-requested (postgres: 71Mi actual vs 512Mi originally); a couple run slightly over their request at peak (Keycloak, Grafana) but stay well under their limit.
-- **product-service env vars** — Spring Boot, not Quarkus; needs `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` set explicitly, same values Compose uses.
+- **Resource sizing** — requests/limits are set from real `kubectl top pods` data, not guesses, for every workload except MongoDB (new, not yet measured against a live cluster — it currently just mirrors PostgreSQL's numbers as a starting point). Several were significantly over-requested (postgres: 71Mi actual vs 512Mi originally); a couple run slightly over their request at peak (Keycloak, Grafana) but stay well under their limit.
+- **product-service env vars** — Spring Boot, not Quarkus; needs `SPRING_MONGODB_HOST/DATABASE/USERNAME/PASSWORD/AUTHENTICATION_DATABASE` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` set explicitly, same values Compose uses.

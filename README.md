@@ -1,6 +1,6 @@
 # ShopFlow – Microservices Platform
 
-![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) ![ArgoCD](https://img.shields.io/badge/ArgoCD-EF7B4D?logo=argo&logoColor=white) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?logo=mongodb&logoColor=white) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) ![ArgoCD](https://img.shields.io/badge/ArgoCD-EF7B4D?logo=argo&logoColor=white) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
 
 ---
 
@@ -9,6 +9,7 @@
 A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
 
 - **Architecture** — Hexagonal Architecture, Domain-Driven Design, API Gateway
+- **Polyglot Persistence** — PostgreSQL for transactional services (Saga, Outbox), MongoDB for the product catalogue
 - **Reliability** — Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control
 - **Messaging** — Apache Kafka, Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
 - **Observability** — Micrometer, Prometheus, Loki, Grafana
@@ -101,7 +102,7 @@ graph TB
 
     subgraph Storage
         ODB[(Order DB<br/>PostgreSQL)]
-        PDB[(Product DB<br/>PostgreSQL)]
+        PDB[(Product DB<br/>MongoDB)]
     end
 
     subgraph Observability
@@ -423,7 +424,7 @@ Each topic has a corresponding DLQ: `<topic>-dlq`.
 | Frontend | Angular 21, PrimeNG 21, nginx |
 | Messaging | Apache Kafka 4.1.1, SmallRye Reactive Messaging |
 | Serialization | Apache Avro 1.12.1, Apicurio Schema Registry 3.1.7 |
-| Database | PostgreSQL 18, Hibernate ORM Panache, Spring Data JPA, Flyway |
+| Database | PostgreSQL 18, MongoDB 8, Hibernate ORM Panache, Spring Data MongoDB, Flyway |
 | Batch | Spring Batch 6 |
 | Resilience | MicroProfile Fault Tolerance |
 | Auth | Keycloak 26, quarkus-oidc, MicroProfile JWT, Spring Security |
@@ -492,7 +493,7 @@ Images pushed: `tbzowka/{order-service,payment-service,inventory-service,product
 ShopFlow can be deployed as a complete stack to a local Kubernetes cluster using Minikube and plain Kubernetes manifests. The Kubernetes deployment includes:
 
 - Java microservices and Angular frontend
-- PostgreSQL with persistent storage
+- PostgreSQL and MongoDB with persistent storage
 - Kafka and Apicurio Schema Registry
 - Keycloak
 - Prometheus, Loki, Alloy and Grafana
@@ -526,7 +527,7 @@ Docker Compose remains the recommended option for day-to-day development. The Ku
 cd order-service     && ./mvnw test   # 46 tests
 cd payment-service   && ./mvnw test   # 4 tests
 cd inventory-service && ./mvnw test   # 3 tests
-cd product-service   && ./mvnw test   # 21 tests
+cd product-service   && ./mvnw test   # 25 tests
 ```
 
 **order-service** — `@QuarkusTest` integration tests with Testcontainers (PostgreSQL, Kafka, Apicurio Schema Registry):
@@ -537,7 +538,7 @@ cd product-service   && ./mvnw test   # 21 tests
 **product-service** — unit and integration tests:
 - CSV validation and parsing
 - Spring Batch processing, skip handling, and catalogue replacement
-- Import job execution with PostgreSQL Testcontainers
+- Import job execution with MongoDB Testcontainers
 - REST API endpoints and file upload scenarios
 
 **payment-service / inventory-service** — Mockito unit tests covering accepted, rejected, and crash-mode event processing.
@@ -565,13 +566,13 @@ npx playwright show-report     # open HTML report after a run
 
 ## Roadmap
 
-- [x] **Docker Compose** — single `docker compose up` to run all services, Kafka, Apicurio, PostgreSQL
+- [x] **Docker Compose** — single `docker compose up` to run all services, Kafka, Apicurio, PostgreSQL, MongoDB
 - [x] **GitHub Actions CI/CD** — build, test, push Docker images to Docker Hub on merge to master
 - [x] **API Gateway** — Quarkus REST Client proxy, single entry point, Correlation ID propagation, 502 error handling
 - [x] **Authentication** — Keycloak OIDC, JWT validation at gateway, role-based access control, JWT forwarded downstream
-- [x] **Angular Frontend** — order list, order detail with live saga timeline, checkout with vinyl catalogue, admin panel; PrimeNG UI, nginx in Docker
+- [x] **Angular Frontend** — order list, order detail with live saga timeline, checkout with product catalogue, admin panel; PrimeNG UI, nginx in Docker
 - [x] **Observability** — Micrometer metrics, Prometheus, Loki + Grafana Alloy log aggregation, four Grafana dashboards provisioned automatically; Correlation ID distributed tracing via dedicated Loki dashboard
-- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (order-service); `@SpringBatchTest` + Testcontainers PostgreSQL (product-service); full saga flows, HTTP contract validation, outbox publisher testing, CSV import workflows; Playwright E2E tests for happy path, failure path, and authentication
-- [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service (own PostgreSQL schema)
+- [x] **Integration Tests** — `@QuarkusTest` + Testcontainers (order-service); `@SpringBatchTest` + Testcontainers MongoDB (product-service); full saga flows, HTTP contract validation, outbox publisher testing, CSV import workflows; Playwright E2E tests for happy path, failure path, and authentication
+- [x] **Product Service** — Spring Boot 4.0.6 microservice; Spring Batch CSV import; product catalogue served via REST; admin-triggered import from the frontend; Database-per-Service — polyglot persistence (own MongoDB database, independent of order-service's PostgreSQL)
 - [x] **Kubernetes Deployment** — full stack on Minikube via plain manifests, Services + DNS, ConfigMaps/Secrets, health probes, resource limits, multi-replica order-service with rolling updates
 - [x] **GitOps deployment with ArgoCD** — CI pins each build's image tag into the app-tier manifests and pushes the commit; ArgoCD watches `k8s/app/` and reconciles the cluster to match, with the UI and auto-sync enabled

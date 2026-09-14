@@ -9,8 +9,9 @@ import org.springframework.batch.infrastructure.item.file.FlatFileParseException
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -24,12 +25,12 @@ class ProductSkipListenerTest {
     }
 
     @Test
-    void onSkipInRead_flatFileParseException_addsLineNumberAndInput() {
+    void onSkipInRead_flatFileParseException_addsColumnCountMismatch() {
         listener.onSkipInRead(new FlatFileParseException("parse error", "Metallica,Master Of Puppets,36.99", 4));
         List<SkippedRecord> records = listener.getSkippedRecords();
         assertThat(records).hasSize(1);
         assertThat(records.get(0).identifier()).isEqualTo("Line 4");
-        assertThat(records.get(0).reason()).contains("Metallica,Master Of Puppets,36.99");
+        assertThat(records.get(0).reason()).isEqualTo("Wrong number of columns. Required 5, found 3");
     }
 
     @Test
@@ -50,18 +51,20 @@ class ProductSkipListenerTest {
     }
 
     @Test
-    void onSkipInWrite_addsArtistAndTitle() {
+    void onSkipInWrite_addsAttributeValues() {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        attributes.put("artist", "Iron Maiden");
+        attributes.put("title", "The Number of the Beast");
         Product item = Product.builder()
-                .id(UUID.randomUUID())
-                .artist("Iron Maiden")
-                .title("Iron Maiden")
+                .category("vinyl")
+                .attributes(attributes)
                 .price(BigDecimal.TEN)
                 .createdAt(Instant.now())
                 .build();
         listener.onSkipInWrite(item, new RuntimeException("DB error"));
         List<SkippedRecord> records = listener.getSkippedRecords();
         assertThat(records).hasSize(1);
-        assertThat(records.get(0).identifier()).isEqualTo("Iron Maiden – Iron Maiden");
+        assertThat(records.get(0).identifier()).isEqualTo("Iron Maiden – The Number of the Beast");
         assertThat(records.get(0).reason()).isEqualTo("DB error");
     }
 

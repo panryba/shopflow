@@ -1,20 +1,17 @@
 package com.example.product.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
+import java.util.Map;
 
-@Entity
-@Table(name = "products")
+@Document(collection = "products")
 @Getter
 @Builder
 @NoArgsConstructor
@@ -22,20 +19,15 @@ import java.util.UUID;
 public class Product {
 
     @Id
-    private UUID id;
+    private String id;
 
-    @Column(nullable = false)
-    private String artist;
+    private String category;
 
-    @Column(nullable = false)
-    private String title;
-
-    @Column(nullable = false)
     private BigDecimal price;
 
-    @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    private Map<String, String> attributes;
+
     private Instant createdAt;
 }

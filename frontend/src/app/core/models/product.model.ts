@@ -1,9 +1,9 @@
 export interface Product {
   id: string;
-  artist: string;
-  title: string;
+  category: string;
   price: number;
   imageUrl: string;
+  attributes: Record<string, string>;
 }
 
 export interface SkippedRecord {

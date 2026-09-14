@@ -1,9 +1,7 @@
 package com.example.product.repository;
 
 import com.example.product.domain.Product;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.UUID;
-
-public interface ProductRepository extends JpaRepository<Product, UUID> {
+public interface ProductRepository extends MongoRepository<Product, String> {
 }

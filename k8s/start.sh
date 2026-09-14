@@ -39,7 +39,7 @@ apply_configmap() {
   kubectl create configmap "$1" --from-file="$2" -n "$NAMESPACE" \
     --dry-run=client -o yaml | kubectl apply -f -
 }
-apply_configmap postgres-init docker/postgres-init.sql
+apply_configmap mongo-init docker/mongo-init.js
 apply_configmap keycloak-realm keycloak/shopflow-realm.json
 apply_configmap prometheus-config monitoring/prometheus/prometheus.yml
 apply_configmap loki-config monitoring/loki/loki.yml
@@ -50,6 +50,7 @@ apply_configmap grafana-dashboards monitoring/grafana/provisioning/dashboards
 echo "==> Database"
 kubectl apply -f k8s/database/
 kubectl wait --for=condition=ready pod -l app=postgres -n "$NAMESPACE" --timeout=180s
+kubectl wait --for=condition=ready pod -l app=mongo -n "$NAMESPACE" --timeout=180s
 
 echo "==> Messaging"
 kubectl apply -f k8s/messaging/

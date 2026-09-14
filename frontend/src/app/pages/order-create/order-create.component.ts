@@ -9,12 +9,13 @@ import { MessageService } from 'primeng/api';
 import { OrderService } from '../../core/services/order.service';
 import { CartService } from '../../core/services/cart.service';
 import { ProductService } from '../../core/services/product.service';
+import { ProductDisplayNamePipe } from '../../core/pipes/product-display-name.pipe';
 import { CanComponentDeactivate } from './order-create.guard';
 
 @Component({
   selector: 'app-order-create',
   standalone: true,
-  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage, RouterLink],
+  imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage, RouterLink, ProductDisplayNamePipe],
   templateUrl: './order-create.component.html',
   styleUrl: './order-create.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -45,11 +46,12 @@ export class OrderCreateComponent implements CanComponentDeactivate {
 
   submit(): void {
     if (this.submitting()) return;
+    const nameOf = new ProductDisplayNamePipe();
     const items = this.cartService.cart().map(i => ({
       productId: i.product.id,
       quantity: i.quantity,
       price: i.product.price,
-      productName: i.product.title,
+      productName: nameOf.transform(i.product),
       imageUrl: i.product.imageUrl
     }));
     if (!items.length) return;

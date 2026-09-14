@@ -8,7 +8,7 @@ import java.util.UUID;
 public record OrderItem(
         UUID id,
         OrderId orderId,
-        UUID productId,
+        String productId,
         int quantity,
         Money price,
         String productName,

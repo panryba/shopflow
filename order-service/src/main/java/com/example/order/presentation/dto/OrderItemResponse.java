@@ -1,10 +1,9 @@
 package com.example.order.presentation.dto;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 public record OrderItemResponse(
-        UUID productId,
+        String productId,
         int quantity,
         BigDecimal price,
         String productName,

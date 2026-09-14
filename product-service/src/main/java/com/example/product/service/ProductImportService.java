@@ -1,5 +1,6 @@
 package com.example.product.service;
 
+import com.example.product.batch.ProductImportJob;
 import com.example.product.batch.ProductSkipListener;
 import com.example.product.dto.ImportResult;
 import io.micrometer.core.instrument.Counter;
@@ -12,11 +13,13 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.core.step.skip.SkipLimitExceededException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Service
@@ -42,7 +45,21 @@ public class ProductImportService {
         this.skippedTotal       = registry.counter("products.skipped");
     }
 
-    private static final String EXPECTED_HEADER = "artist,title,price,imageUrl";
+    private static final List<String> EXPECTED_HEADERS = List.of(
+            "category,artist,title,price,imageUrl",
+            "category,manufacturer,name,price,imageUrl"
+    );
+
+    // SkipLimitExceededException is never a top-level failure exception —
+    // Spring Batch wraps it inside a FatalStepExecutionException — so it has
+    // to be found by walking each failure's cause chain, not by checking
+    // JobExecution.getAllFailureExceptions() entries directly.
+    private static boolean causedBySkipLimitExceeded(Throwable t) {
+        for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SkipLimitExceededException) return true;
+        }
+        return false;
+    }
 
     private void validateFileType(String filename) {
         if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
@@ -52,10 +69,10 @@ public class ProductImportService {
 
     private void validateHeader(Path file) throws Exception {
         try (Stream<String> lines = Files.lines(file)) {
-            String header = lines.findFirst().orElse("");
-            if (!header.trim().equals(EXPECTED_HEADER)) {
+            String header = lines.findFirst().orElse("").trim();
+            if (!EXPECTED_HEADERS.contains(header)) {
                 throw new IllegalArgumentException(
-                        "Invalid CSV header. Expected: " + EXPECTED_HEADER + ", got: " + header.trim());
+                        "Invalid CSV header. Expected one of: " + String.join(" | ", EXPECTED_HEADERS) + ", got: " + header);
             }
         }
     }
@@ -82,6 +99,15 @@ public class ProductImportService {
             if (execution.getStatus() == BatchStatus.FAILED) {
                 importFailuresTotal.increment();
                 failureCounted = true;
+
+                boolean skipLimitExceeded = execution.getAllFailureExceptions().stream()
+                        .anyMatch(ProductImportService::causedBySkipLimitExceeded);
+                if (skipLimitExceeded) {
+                    throw new IllegalArgumentException(
+                            "Too many invalid rows — more than " + ProductImportJob.SKIP_LIMIT +
+                                    " rows failed validation, so the import was aborted. Fix the file and try again.");
+                }
+
                 throw new RuntimeException("Import job failed: " + execution.getExitStatus().getExitDescription());
             }
 

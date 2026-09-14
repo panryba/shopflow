@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -35,9 +35,9 @@ class ProductResourceTest {
     void getAll_returns200WithProductList() throws Exception {
         when(productService.findAll()).thenReturn(List.of(
                 Product.builder()
-                        .id(UUID.randomUUID())
-                        .artist("Pink Floyd")
-                        .title("The Wall")
+                        .id("507f1f77bcf86cd799439011")
+                        .category("vinyl")
+                        .attributes(Map.of("artist", "Pink Floyd", "title", "The Wall"))
                         .price(new BigDecimal("29.99"))
                         .createdAt(Instant.now())
                         .build()
@@ -45,7 +45,7 @@ class ProductResourceTest {
         mockMvc.perform(get("/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].artist").value("Pink Floyd"));
+                .andExpect(jsonPath("$[0].attributes.artist").value("Pink Floyd"));
     }
 
     @Test
@@ -54,7 +54,7 @@ class ProductResourceTest {
                 ImportResult.builder().imported(3).skipped(0).skippedRecords(List.of()).build()
         );
         MockMultipartFile file = new MockMultipartFile("file", "products.csv", "text/csv",
-                "artist,title,price,imageUrl\n".getBytes());
+                "category,artist,title,price,imageUrl\n".getBytes());
         mockMvc.perform(multipart("/products/import").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.imported").value(3))

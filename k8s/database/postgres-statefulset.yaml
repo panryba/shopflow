@@ -1,6 +1,6 @@
-# Single Postgres instance shared by order-service (db "postgres", its default
-# maintenance db) and product-service (db "product"). Matches docker-compose.yml
-# exactly: same image, same POSTGRES_USER/DB, same init script creating "product".
+# Used by order-service (db "postgres", its default maintenance db) and
+# Keycloak. product-service uses MongoDB instead — see mongo-statefulset.yaml.
+# Matches docker-compose.yml exactly: same image, same POSTGRES_USER/DB.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -50,9 +50,6 @@ spec:
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql
-            - name: postgres-init
-              mountPath: /docker-entrypoint-initdb.d
-              readOnly: true
           resources:
             requests:
               cpu: "100m"
@@ -74,10 +71,3 @@ spec:
         - name: postgres-data
           persistentVolumeClaim:
             claimName: postgres-pvc
-        # postgres-init ConfigMap is generated from docker/postgres-init.sql —
-        # see k8s/README.md "Manual Deployment". Keeps the two deployment
-        # methods in sync instead of hand-duplicating the SQL into a static
-        # manifest.
-        - name: postgres-init
-          configMap:
-            name: postgres-init

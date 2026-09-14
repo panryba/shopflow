@@ -44,7 +44,7 @@ spec:
           command: ["sh", "-c", "until nc -z apicurio-registry 8080; do echo waiting for apicurio-registry; sleep 2; done"]
       containers:
         - name: order-service
-          image: tbzowka/order-service:cd055518f261ed10ea05580ec796de39890e31f5
+          image: tbzowka/order-service:a2b570a4453dade7d611e05e3a693d04ff3c66b5
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { DatePipe, DecimalPipe, SlicePipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
@@ -15,7 +15,8 @@ import { StatusLabelPipe } from '../../core/pipes/status-label.pipe';
   standalone: true,
   imports: [TableModule, ButtonModule, TagModule, TooltipModule, ToolbarModule, DecimalPipe, DatePipe, SlicePipe, StatusLabelPipe],
   templateUrl: './order-list.component.html',
-  styleUrl: './order-list.component.scss'
+  styleUrl: './order-list.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OrderListComponent implements OnInit {
   private orderService = inject(OrderService);

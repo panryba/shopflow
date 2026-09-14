@@ -1,4 +1,4 @@
-import { Component, inject, effect, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, effect, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DecimalPipe, NgOptimizedImage } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -9,15 +9,17 @@ import { MessageService } from 'primeng/api';
 import { OrderService } from '../../core/services/order.service';
 import { CartService } from '../../core/services/cart.service';
 import { ProductService } from '../../core/services/product.service';
+import { CanComponentDeactivate } from './order-create.guard';
 
 @Component({
   selector: 'app-order-create',
   standalone: true,
   imports: [ButtonModule, CardModule, CarouselModule, DecimalPipe, NgOptimizedImage, RouterLink],
   templateUrl: './order-create.component.html',
-  styleUrl: './order-create.component.scss'
+  styleUrl: './order-create.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class OrderCreateComponent {
+export class OrderCreateComponent implements CanComponentDeactivate {
   private orderService = inject(OrderService);
   private router = inject(Router);
   private messageService = inject(MessageService);
@@ -67,5 +69,10 @@ export class OrderCreateComponent {
         this.messageService.add({ severity: 'error', summary: 'Failed to submit order' });
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.cartService.cart().length === 0) return true;
+    return confirm('You have items in your cart. Leave without completing this order?');
   }
 }

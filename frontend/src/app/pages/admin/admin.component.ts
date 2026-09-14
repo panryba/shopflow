@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToggleButtonModule } from 'primeng/togglebutton';
 import { Select } from 'primeng/select';
@@ -15,7 +15,8 @@ import { ImportResult } from '../../core/models/product.model';
   standalone: true,
   imports: [FormsModule, ToggleButtonModule, Select, ButtonModule],
   templateUrl: './admin.component.html',
-  styleUrl: './admin.component.scss'
+  styleUrl: './admin.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AdminComponent implements OnInit {
   private inventoryService = inject(InventoryService);

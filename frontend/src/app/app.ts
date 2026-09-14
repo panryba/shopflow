@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { NavbarComponent } from './shared/navbar/navbar.component';
@@ -8,6 +8,7 @@ import { NavbarComponent } from './shared/navbar/navbar.component';
   standalone: true,
   imports: [RouterOutlet, NavbarComponent, ToastModule],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class App {}

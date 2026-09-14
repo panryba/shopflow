@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { adminGuard } from './core/auth/admin.guard';
+import { unsavedCartGuard } from './pages/order-create/order-create.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'orders', pathMatch: 'full' },
@@ -12,6 +13,7 @@ export const routes: Routes = [
   {
     path: 'orders/new',
     canActivate: [authGuard],
+    canDeactivate: [unsavedCartGuard],
     loadComponent: () => import('./pages/order-create/order-create.component').then(m => m.OrderCreateComponent)
   },
   {

@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { DecimalPipe, DatePipe, NgOptimizedImage } from '@angular/common';
 import { Subscription } from 'rxjs';
@@ -33,7 +33,8 @@ const STATUS_CONFIG: Record<HistoryStatus, { label: string; icon: string; color:
   standalone: true,
   imports: [TableModule, TagModule, TimelineModule, DecimalPipe, DatePipe, NgOptimizedImage, SagaLivePipe, StatusLabelPipe],
   templateUrl: './order-detail.component.html',
-  styleUrl: './order-detail.component.scss'
+  styleUrl: './order-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OrderDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);

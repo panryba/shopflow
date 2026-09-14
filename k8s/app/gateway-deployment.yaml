@@ -28,7 +28,7 @@ spec:
           command: ["sh", "-c", "until nc -z keycloak 8080; do echo waiting for keycloak; sleep 2; done"]
       containers:
         - name: gateway
-          image: tbzowka/gateway:d19ef5f7fb5915718583eea353e1f33f14bd4f92
+          image: tbzowka/gateway:647eaf869c6c8dfd3f7d869589eb94ad5144c7f0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8090

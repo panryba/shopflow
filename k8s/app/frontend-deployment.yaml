@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: tbzowka/frontend:45408f228871c2b041d5906738870aae4ef597b3
+          image: tbzowka/frontend:be888cc8f2272dadc5a3d19f3484b7be27e93658
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

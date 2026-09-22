@@ -1,8 +1,12 @@
 # ShopFlow – Microservices Platform
 
-**[▶ Live Demo & Docs](https://panryba.github.io/shopflow)**
-
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) ![ArgoCD](https://img.shields.io/badge/ArgoCD-3.5.2-EF7B4D) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
+
+---
+
+## Live Demo
+
+**[▶ Live Demo & Docs](https://panryba.github.io/shopflow)**
 
 ![Happy path saga — order created, payment confirmed, inventory reserved](docs/demo.gif)
 

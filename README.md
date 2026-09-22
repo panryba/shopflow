@@ -1,40 +1,8 @@
 # ShopFlow – Microservices Platform
 
+**[▶ Live Demo & Docs](https://panryba.github.io/shopflow)**
+
 ![Java](https://img.shields.io/badge/Java-25-orange) ![Quarkus](https://img.shields.io/badge/Quarkus-3.33-blueviolet) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F) ![Kafka](https://img.shields.io/badge/Kafka-4.1.1-black) ![Avro](https://img.shields.io/badge/Avro-1.12.1-critical) ![Apicurio](https://img.shields.io/badge/Apicurio-3.1.7-orangered) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue) ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248) ![Angular](https://img.shields.io/badge/Angular-21-red) ![Keycloak](https://img.shields.io/badge/Keycloak-26-teal) ![Grafana](https://img.shields.io/badge/Grafana-13.0-F46800) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white) ![ArgoCD](https://img.shields.io/badge/ArgoCD-3.5.2-EF7B4D) [![CI/CD](https://github.com/panryba/shopflow/actions/workflows/ci.yml/badge.svg)](https://github.com/panryba/shopflow/actions/workflows/ci.yml)
-
----
-
-## Overview
-
-A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
-
-- **Architecture** — Hexagonal Architecture, Domain-Driven Design, API Gateway
-- **Polyglot Persistence** — PostgreSQL for transactional services (Saga, Outbox), MongoDB for the product catalogue
-- **Reliability** — Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control
-- **Messaging** — Apache Kafka, Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
-- **Observability** — Micrometer, Prometheus, Loki, Grafana
-- **Deployment** — Docker Compose, Kubernetes (Minikube), GitOps with ArgoCD, GitHub Actions CI/CD
-- **Testing** — QuarkusTest + Testcontainers, SpringBatchTest, Mockito, REST Assured, Playwright E2E
-- **Frontend** — Angular, TypeScript, PrimeNG, nginx
-
-### Create Order Flow
-
-```
-Angular Frontend
-       │
-       ▼
-API Gateway → Keycloak
-       │
-       ▼
-Order Service → PostgreSQL
-       │
-       ▼
-     Kafka
-  ┌────┴────┐
-  ▼         ▼
-Payment  Inventory
-Service  Service
-```
 
 ![Happy path saga — order created, payment confirmed, inventory reserved](docs/demo.gif)
 
@@ -69,6 +37,40 @@ docker compose up
 | admin | password | admin |
 
 For Kubernetes deployment using Minikube, see the [Kubernetes Deployment](#kubernetes-deployment) section below.
+
+---
+
+## Overview
+
+A production-shaped online shop built as a microservices portfolio project, demonstrating distributed systems patterns and operational concerns found in modern backend architectures.
+
+- **Architecture** — Hexagonal Architecture, Domain-Driven Design, API Gateway
+- **Polyglot Persistence** — PostgreSQL for transactional services (Saga, Outbox), MongoDB for the product catalogue
+- **Reliability** — Saga Orchestrator, Transactional Outbox, Idempotent Consumer (Inbox), Dead Letter Queue, Saga Timeout, Idempotent Order Creation, Fault Tolerance, Concurrency Control
+- **Messaging** — Apache Kafka, Avro + Schema Registry, Partition Key Consistency, Correlation ID Tracing
+- **Observability** — Micrometer, Prometheus, Loki, Grafana
+- **Deployment** — Docker Compose, Kubernetes (Minikube), GitOps with ArgoCD, GitHub Actions CI/CD
+- **Testing** — QuarkusTest + Testcontainers, SpringBatchTest, Mockito, REST Assured, Playwright E2E
+- **Frontend** — Angular, TypeScript, PrimeNG, nginx
+
+### Create Order Flow
+
+```
+Angular Frontend
+       │
+       ▼
+API Gateway → Keycloak
+       │
+       ▼
+Order Service → PostgreSQL
+       │
+       ▼
+     Kafka
+  ┌────┴────┐
+  ▼         ▼
+Payment  Inventory
+Service  Service
+```
 
 ---
 
